@@ -1,5 +1,6 @@
-import { StyleSheet, View } from 'react-native';
-import Icon from "../componentes/Icons/Icon";
+import React from "react";
+import { View, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import Icon from "./icon.js";
 
 // Defina os ícones de cada tipo de NavBar
 const navBarIcons = {

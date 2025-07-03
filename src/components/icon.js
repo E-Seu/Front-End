@@ -1,25 +1,25 @@
 import React, { Component } from "react";
-import { View, TouchableOpacity, Image, StyleSheet } from "react-native";
+import {TouchableOpacity, Image, StyleSheet } from "react-native";
 
 // Mapeamento dos ícones e imagens
 const iconData = {
   Inicio: {
-    NClicado: require("../../src/NavBar/Inicio1.png"),
-    Clicado: require("../../src/NavBar/Inicio2.png"),
+    NClicado: require("../assets/icons/Inicio1.png"),
+    Clicado: require("../assets/icons/Inicio2.png"),
   },
   Conta: {
-    NClicado: require("../../src/NavBar/Conta1.png"),
-    Clicado: require("../../src/NavBar/Conta2.png"),
+    NClicado: require("../assets/icons/Conta1.png"),
+    Clicado: require("../assets/icons/Conta2.png"),
   },
   Pedido: {
-    NClicado: require("../../src/NavBar/Pedido1.png"),
-    Clicado: require("../../src/NavBar/Pedido2.png"),
+    NClicado: require("../assets/icons/Pedido1.png"),
+    Clicado: require("../assets/icons/Pedido2.png"),
   },
   Entrega: {
-    NClicado: require("../../src/NavBar/Entrega1.png"),
-    Clicado: require("../../src/NavBar/Entrega2.png"),
+    NClicado: require("../assets/icons/Entrega1.png"),
+    Clicado: require("../assets/icons/Entrega2.png"),
   },
-  // Adicione outros ícones aqui...
+
 };
 
 export default class Icon extends Component {

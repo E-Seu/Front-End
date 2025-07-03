@@ -1,5 +1,5 @@
 import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import NavBar from './componentes/NavBar';
+import NavBar from './src/components/navBar';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
