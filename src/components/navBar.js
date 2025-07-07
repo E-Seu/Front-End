@@ -1,21 +1,45 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import Icon from "./icon.js";
 
-// Defina os ícones de cada tipo de NavBar
-const navBarIcons = {
-  cliente: ["Inicio", "Pedido", "Conta"],
-  restaurante: ["Inicio", "Pedido", "Conta"],
-  entregador: ["Inicio", "Entrega", "Conta"],
+// Defina os ícones e suas respectivas rotas para cada tipo de NavBar
+const navBarConfig = {
+  cliente: [
+    { icon: "Inicio", route: "ClienteHome" },
+    { icon: "Pedido", route: "ClientePedidos" },
+    { icon: "Conta", route: "ClienteConta" }
+  ],
+  restaurante: [
+    { icon: "Inicio", route: "RestauranteHome" },
+    { icon: "Pedido", route: "RestaurantePedidos" },
+    { icon: "Conta", route: "RestauranteConta" }
+  ],
+  entregador: [
+    { icon: "Inicio", route: "EntregadorHome" },
+    { icon: "Entrega", route: "EntregadorEntregas" },
+    { icon: "Conta", route: "EntregadorConta" }
+  ],
 };
 
-function NavBar({ tipo = "cliente" }) {
-  const icons = navBarIcons[tipo] || navBarIcons["cliente"];
+function NavBar({ tipo = "cliente", navigation }) {
+  const navItems = navBarConfig[tipo] || navBarConfig["cliente"];
+  const [activeIcon, setActiveIcon] = useState(navItems[0].icon); // Primeiro ícone ativo por padrão
+
+  const handlePress = (route, icon) => {
+    setActiveIcon(icon); // Ativa o ícone pressionado
+    // navigation.navigate(route);
+  };
 
   return (
     <View style={styles.container}>
-      {icons.map((nome) => (
-        <Icon key={nome} nome={nome} />
+      {navItems.map((item) => (
+        <TouchableOpacity 
+          key={item.icon} 
+          onPress={() => handlePress(item.route, item.icon)}
+          style={styles.iconButton}
+        >
+          <Icon nome={item.icon} ativo={activeIcon === item.icon} />
+        </TouchableOpacity>
       ))}
     </View>
   );
@@ -28,6 +52,9 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     padding: 20,
+  },
+  iconButton: {
+    padding: 10,
   },
 });
 

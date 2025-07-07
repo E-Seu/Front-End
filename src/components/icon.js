@@ -1,5 +1,5 @@
-import React, { Component } from "react";
-import { TouchableOpacity, StyleSheet, Text, View } from "react-native";
+import React from "react";
+import { StyleSheet, Text, View } from "react-native";
 import InicioIcon from "../assets/icons/inicioIcon";
 import ContaIcon from "../assets/icons/contaIcon";
 import PedidoIcon from "../assets/icons/pedidoIcon";
@@ -14,39 +14,26 @@ const iconComponents = {
   Entrega: EntregaIcon,
 };
 
-export default class Icon extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      aberto: false,
-    };
-  }
-
-  aoClicar = () => {
-    if (!this.state.aberto) {
-      this.setState({
-        aberto: true,
-      });
-    }
-  };
-
-  render() {
-    const IconComponent = iconComponents[this.props.nome] || PlaceholderIcon;
-    
-    return (
-      <TouchableOpacity onPress={this.aoClicar} style={styles.container}>
-        <View style={styles.iconContainer}>
-          <IconComponent 
-            isActive={this.state.aberto} 
-            name={this.props.nome}
-            width={57} 
-            height={47} 
-          />
-          <Text style={styles.iconText}>{this.props.nome}</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  }
+function Icon({ nome, ativo = false }) {
+  const IconComponent = iconComponents[nome] || PlaceholderIcon;
+  
+  console.log(`Icon ${nome} - ativo: ${ativo}`); // Debug para verificar se está recebendo a prop
+  
+  return (
+    <View style={styles.container}>
+      <View style={styles.iconContainer}>
+        <IconComponent 
+          isActive={ativo} 
+          name={nome}
+          width={57} 
+          height={47} 
+        />
+        <Text style={[styles.iconText, ativo && styles.activeText]}>
+          {nome}
+        </Text>
+      </View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -60,9 +47,15 @@ const styles = StyleSheet.create({
   },
   iconText: {
     fontSize: 12,
-    color: "#666",
+    color: "#4E0777",
     marginTop: 1,
     textAlign: "center",
     fontFamily: "Nunito-Bold",
   },
+  activeText: {
+    color: "#4E0777",
+
+  },
 });
+
+export default Icon;
