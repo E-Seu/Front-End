@@ -1,51 +1,49 @@
 import React, { Component } from "react";
-import {TouchableOpacity, Image, StyleSheet } from "react-native";
+import { TouchableOpacity, StyleSheet, Text, View } from "react-native";
+import InicioIcon from "../assets/icons/inicioIcon";
+import ContaIcon from "../assets/icons/contaIcon";
+import PedidoIcon from "../assets/icons/pedidoIcon";
+import EntregaIcon from "../assets/icons/entregaIcon";
+import PlaceholderIcon from "../assets/icons/placeHolderIcon";
 
-// Mapeamento dos ícones e imagens
-const iconData = {
-  Inicio: {
-    NClicado: require("../assets/icons/Inicio1.png"),
-    Clicado: require("../assets/icons/Inicio2.png"),
-  },
-  Conta: {
-    NClicado: require("../assets/icons/Conta1.png"),
-    Clicado: require("../assets/icons/Conta2.png"),
-  },
-  Pedido: {
-    NClicado: require("../assets/icons/Pedido1.png"),
-    Clicado: require("../assets/icons/Pedido2.png"),
-  },
-  Entrega: {
-    NClicado: require("../assets/icons/Entrega1.png"),
-    Clicado: require("../assets/icons/Entrega2.png"),
-  },
-
+// Mapeamento dos componentes SVG
+const iconComponents = {
+  Inicio: InicioIcon,
+  Conta: ContaIcon,
+  Pedido: PedidoIcon,
+  Entrega: EntregaIcon,
 };
 
 export default class Icon extends Component {
   constructor(props) {
     super(props);
-    const data = iconData[props.nome] || {};
     this.state = {
-      img: data.NClicado,
       aberto: false,
-      data,
     };
   }
 
   aoClicar = () => {
     if (!this.state.aberto) {
       this.setState({
-        img: this.state.data.Clicado,
         aberto: true,
       });
     }
   };
 
   render() {
+    const IconComponent = iconComponents[this.props.nome] || PlaceholderIcon;
+    
     return (
       <TouchableOpacity onPress={this.aoClicar} style={styles.container}>
-        <Image source={this.state.img} style={styles.img} />
+        <View style={styles.iconContainer}>
+          <IconComponent 
+            isActive={this.state.aberto} 
+            name={this.props.nome}
+            width={57} 
+            height={47} 
+          />
+          <Text style={styles.iconText}>{this.props.nome}</Text>
+        </View>
       </TouchableOpacity>
     );
   }
@@ -56,9 +54,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  img: {
-    width: 61,
-    height: 61,
-    resizeMode: "contain",
+  iconContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconText: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 1,
+    textAlign: "center",
+    fontFamily: "Nunito-Bold",
   },
 });
