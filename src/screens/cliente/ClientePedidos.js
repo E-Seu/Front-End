@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import NavBar from '../../components/navBar';
 
 const ClientePedidos = () => {
   return (

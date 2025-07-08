@@ -5,7 +5,7 @@ import Routes from './src/routes/routes';
 function App() {
   return (
     <NavigationContainer>
-      <Routes />
+      <Routes/>
     </NavigationContainer>
   );
 }

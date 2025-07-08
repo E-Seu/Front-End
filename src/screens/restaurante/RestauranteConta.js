@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-const ClienteConta = () => {
+const RestauranteConta = () => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>ClienteConta</Text>
+        <Text style={styles.title}>RestauranteConta</Text>
         <Text style={styles.subtitle}>Tela principal do app</Text>
       </View>
     </View>
@@ -34,4 +34,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ClienteConta;
+export default RestauranteConta;

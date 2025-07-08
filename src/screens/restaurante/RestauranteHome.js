@@ -6,9 +6,9 @@ import OpcoesIcon from '../../assets/icons/opcoesIcon';
 import NotificacaoIcon from '../../assets/icons/notificacaoIcon';
 import RestaurantItem from '../../components/RestaurantItem';
 
-const ClienteHome = () => {
+const RestauranteHome = () => {
   const navigation = useNavigation(); // Usar hook ao invés de prop
-  const nomeCliente = 'Cliente'; // Placeholder
+  const nomeRestaurante = 'Restaurante'; // Placeholder
 
   // Estado para gerenciar os favoritos (mock)
   const [restaurants, setRestaurants] = useState([
@@ -61,7 +61,7 @@ const ClienteHome = () => {
     const favoritedRestaurants = restaurants.filter(restaurant => restaurant.isFavorite);
     
     // Navegar para a tela de favoritos passando os restaurantes favoritos e callback
-    navigation.navigate('ClienteFavoritos', { 
+    navigation.navigate('RestauranteFavoritos', { 
       favoritedRestaurants: favoritedRestaurants,
       onUpdateFavorites: handleFavoritedPress // Passar a função de callback
     });
@@ -111,7 +111,7 @@ const ClienteHome = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.welcomeContainer}>
-          <Text style={styles.welcomeText}>Olá, {nomeCliente}!</Text>
+          <Text style={styles.welcomeText}>Olá, {nomeRestaurante}!</Text>
         </View>
         
         <View style={styles.buttonsContainer}>
@@ -210,4 +210,4 @@ const styles = StyleSheet.create({
 
 });
 
-export default ClienteHome;
+export default RestauranteHome;
