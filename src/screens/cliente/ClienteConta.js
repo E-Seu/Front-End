@@ -1,15 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import NavBar from '../components/navBar';
+import NavBar from '../../components/navBar';
 
-const HomeScreen = () => {
+const ClienteConta = () => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Home</Text>
+        <Text style={styles.title}>ClienteConta</Text>
         <Text style={styles.subtitle}>Tela principal do app</Text>
       </View>
-      <NavBar tipo="cliente" />
     </View>
   );
 };
@@ -36,4 +35,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen;
+export default ClienteConta;

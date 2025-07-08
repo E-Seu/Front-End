@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import React from "react";
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from "./icon.js";
 
 // Defina os ícones e suas respectivas rotas para cada tipo de NavBar
@@ -21,13 +21,22 @@ const navBarConfig = {
   ],
 };
 
-function NavBar({ tipo = "cliente", navigation }) {
+function NavBar({ tipo = "cliente", onNavigate, currentScreen }) {
   const navItems = navBarConfig[tipo] || navBarConfig["cliente"];
-  const [activeIcon, setActiveIcon] = useState(navItems[0].icon); // Primeiro ícone ativo por padrão
 
-  const handlePress = (route, icon) => {
-    setActiveIcon(icon); // Ativa o ícone pressionado
-    // navigation.navigate(route);
+  // Determina qual ícone está ativo baseado na tela atual
+  const getActiveIcon = () => {
+    const currentItem = navItems.find(item => item.route === currentScreen);
+    return currentItem ? currentItem.icon : navItems[0].icon;
+  };
+
+  const activeIcon = getActiveIcon();
+
+  const handlePress = (routeName, icon) => {
+    // Só navega se não estiver na mesma tela
+    if (currentScreen !== routeName) {
+      onNavigate(routeName);
+    }
   };
 
   return (
@@ -36,7 +45,11 @@ function NavBar({ tipo = "cliente", navigation }) {
         <TouchableOpacity 
           key={item.icon} 
           onPress={() => handlePress(item.route, item.icon)}
-          style={styles.iconButton}
+          style={[
+            styles.iconButton,
+            activeIcon === item.icon && styles.activeButton
+          ]}
+          activeOpacity={0.7}
         >
           <Icon nome={item.icon} ativo={activeIcon === item.icon} />
         </TouchableOpacity>

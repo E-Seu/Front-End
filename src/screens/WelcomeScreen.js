@@ -22,11 +22,11 @@ const WelcomeScreen = ({ navigation }) => {
         <Text style={styles.buttonText}>Cadastrar</Text>
       </TouchableOpacity>
       
-      <TouchableOpacity 
+           <TouchableOpacity 
         style={[styles.button, styles.testButton]} 
-        onPress={() => navigation.navigate('Home')}
+        onPress={() => navigation.navigate('AppLayout')}
       >
-        <Text style={styles.buttonText}>Ir para Home (Teste)</Text>
+        <Text style={styles.buttonText}>Ir para Layout</Text>
       </TouchableOpacity>
     </View>
   );
