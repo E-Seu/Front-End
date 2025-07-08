@@ -10,6 +10,7 @@ import ClienteHome from '../screens/cliente/ClienteHome';
 import ClientePedidos from '../screens/cliente/ClientePedidos';
 import ClienteConta from '../screens/cliente/ClienteConta';
 import ClienteFavoritos from '../screens/cliente/ClienteFavoritos';
+import ClienteRestauranteDetalhes from '../screens/cliente/ClienteRestauranteDetalhes';
 import AppLayout from '../components/AppLayout';
 import RestauranteHome from '../screens/restaurante/RestauranteHome';
 import RestauranteConta from '../screens/restaurante/RestauranteConta';
@@ -54,9 +55,16 @@ export default function Routes() {
           animation: 'fade',
         }}
       />
-            <Stack.Screen 
+      <Stack.Screen 
         name="ClienteFavoritos" 
         component={ClienteFavoritos}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen 
+        name="RestauranteDetalhes" 
+        component={ClienteRestauranteDetalhes}
         options={{
           animation: 'slide_from_right',
         }}
