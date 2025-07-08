@@ -5,10 +5,11 @@ import FavoritosIcon from '../../assets/icons/favoritosIcon';
 import OpcoesIcon from '../../assets/icons/opcoesIcon';
 import NotificacaoIcon from '../../assets/icons/notificacaoIcon';
 import RestaurantItem from '../../components/RestaurantItem';
+import { useAuth } from '../../context/AuthContext';
 
 const ClienteHome = () => {
   const navigation = useNavigation(); // Usar hook ao invés de prop
-  const nomeCliente = 'Cliente'; // Placeholder
+  const { userName} = useAuth();   
 
   // Estado para gerenciar os favoritos (mock)
   const [restaurants, setRestaurants] = useState([
@@ -111,7 +112,7 @@ const ClienteHome = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.welcomeContainer}>
-          <Text style={styles.welcomeText}>Olá, {nomeCliente}!</Text>
+          <Text style={styles.welcomeText}>Olá, {userName}!</Text>
         </View>
         
         <View style={styles.buttonsContainer}>
