@@ -6,6 +6,10 @@
       "sha1": "4a505b70c66f48130872ed50b87e4cbebb1f2fbc"
     },
     {
+      "path": "assets/fonts/Nunito-ExtraBold.ttf",
+      "sha1": "350a651693803cf369b05732920d119fdf557d6f"
+    },
+    {
       "path": "assets/fonts/Nunito-Italic.ttf",
       "sha1": "6fd4abf3af151e5678295a345f420ee3ba86042e"
     },
@@ -16,6 +20,10 @@
     {
       "path": "assets/fonts/Nunito-Regular.ttf",
       "sha1": "1061e4e1867b95fa1353d449970e3dcb23da5f40"
+    },
+    {
+      "path": "assets/fonts/Nunito-SemiBold.ttf",
+      "sha1": "c1b768ee15ef8969a6e6d9c59f9a4cd7c3ca2a5e"
     }
   ]
 }

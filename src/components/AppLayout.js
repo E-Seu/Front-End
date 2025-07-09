@@ -7,13 +7,13 @@ import ClienteHome from '../screens/cliente/ClienteHome';
 import ClientePedidos from '../screens/cliente/ClientePedidos';
 import ClienteConta from '../screens/cliente/ClienteConta';
 
-// import RestauranteHome from '../screens/private/restaurante/RestauranteHome';
-// import RestaurantePedidos from '../screens/private/restaurante/RestaurantePedidos';
-// import RestauranteConta from '../screens/private/restaurante/RestauranteConta';
+import RestauranteHome from '../screens/restaurante/RestauranteHome';
+import RestaurantePedidos from '../screens/restaurante/RestaurantePedidos';
+import RestauranteConta from '../screens/restaurante/RestauranteConta';
 
-// import EntregadorHome from '../screens/private/entregador/EntregadorHome';
-// import EntregadorEntregas from '../screens/private/entregador/EntregadorEntregas';
-// import EntregadorConta from '../screens/private/entregador/EntregadorConta';
+import EntregadorHome from '../screens/entregador/EntregadorHome';
+import EntregadorEntregas from '../screens/entregador/EntregadorEntregas';
+import EntregadorConta from '../screens/entregador/EntregadorConta';
 
 // Mapeamento das telas por tipo de usuário
 const screenComponents = {
@@ -22,16 +22,16 @@ const screenComponents = {
     ClientePedidos: ClientePedidos,
     ClienteConta: ClienteConta,
   },
-  // restaurante: {
-  //   RestauranteHome: RestauranteHome,
-  //   RestaurantePedidos: RestaurantePedidos,
-  //   RestauranteConta: RestauranteConta,
-  // },
-  // entregador: {
-  //   EntregadorHome: EntregadorHome,
-  //   EntregadorEntregas: EntregadorEntregas,
-  //   EntregadorConta: EntregadorConta,
-  // },
+  restaurante: {
+    RestauranteHome: RestauranteHome,
+    RestaurantePedidos: RestaurantePedidos,
+    RestauranteConta: RestauranteConta,
+  },
+  entregador: {
+    EntregadorHome: EntregadorHome,
+    EntregadorEntregas: EntregadorEntregas,
+    EntregadorConta: EntregadorConta,
+  },
 };
 
 // Mapeamento de qual tela inicial para cada tipo

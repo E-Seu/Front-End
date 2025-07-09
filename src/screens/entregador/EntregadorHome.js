@@ -6,9 +6,9 @@ import OpcoesIcon from '../../assets/icons/opcoesIcon';
 import NotificacaoIcon from '../../assets/icons/notificacaoIcon';
 import RestaurantItem from '../../components/RestaurantItem';
 
-const ClienteHome = () => {
+const EntregadorHome = () => {
   const navigation = useNavigation(); // Usar hook ao invés de prop
-  const nomeCliente = 'Cliente'; // Placeholder
+  const nomeEntregador = 'Entregador'; // Placeholder
 
   // Estado para gerenciar os favoritos (mock)
   const [restaurants, setRestaurants] = useState([
@@ -17,66 +17,42 @@ const ClienteHome = () => {
       nome: "Comida Paixão - Feito com amor",
       info: "Comida caseira",
       local: "PPGCC",
-      isFavorite: false,
-      horarioAbertura: "07:00",
-      horarioFechamento: "18:00",
-      numeroEstrelas: 5,
-      isAberto: true
+      isFavorite: false
     },
     {
       id: 2,
       nome: "Espetinhos Gente Fina",
       info: "Grelhados",
       local: "Praça de Alimentação",
-      isFavorite: false,
-      horarioAbertura: "11:00",
-      horarioFechamento: "23:00",
-      numeroEstrelas: 1.6,
-      isAberto: true
+      isFavorite: false
     },
     {
       id: 3,
       nome: "Cantinazinhainha",
       info: "Lanches e sucos",
       local: "Bloco C - 1º andar",
-      isFavorite: false,
-      horarioAbertura: "06:30",
-      horarioFechamento: "20:00",
-      numeroEstrelas: 4.2,
-      isAberto: false
+      isFavorite: false
     },
     {
       id: 4,
       nome: "Pizzaaaaa",
       info: "Pizzas individuais",
       local: "Centro de Convivência",
-      isFavorite: false,
-      horarioAbertura: "17:00",
-      horarioFechamento: "01:00",
-      numeroEstrelas: 4.7,
-      isAberto: false
+      isFavorite: false
     },
     {
       id: 5,
       nome: "Açaí do Íaça",
       info: "Açaí e vitaminas",
       local: "Quadra Poliesportiva",
-      isFavorite: false,
-      horarioAbertura: "08:00",
-      horarioFechamento: "22:00",
-      numeroEstrelas: 2.5,
-      isAberto: true
+      isFavorite: false
     },
     {
       id: 6,
       nome: "Burggers", 
       info: "Hambúrgueres artesanais",
       local: "Entrada Principal",
-      isFavorite: false,
-      horarioAbertura: "10:00",
-      horarioFechamento: "23:30",
-      numeroEstrelas: 4.9,
-      isAberto: false
+      isFavorite: false
     }
   ]);
 
@@ -85,7 +61,7 @@ const ClienteHome = () => {
     const favoritedRestaurants = restaurants.filter(restaurant => restaurant.isFavorite);
     
     // Navegar para a tela de favoritos passando os restaurantes favoritos e callback
-    navigation.navigate('ClienteFavoritos', { 
+    navigation.navigate('EntregadorFavoritos', { 
       favoritedRestaurants: favoritedRestaurants,
       onUpdateFavorites: handleFavoritedPress // Passar a função de callback
     });
@@ -113,7 +89,6 @@ const ClienteHome = () => {
 
   const handleRestaurantPress = (restaurant) => {
     console.log('Restaurante pressionado:', restaurant.nome);
-    navigation.navigate('RestauranteDetalhes', { restaurant });
   };
 
   const renderRestaurantItem = ({ item }) => (
@@ -136,7 +111,7 @@ const ClienteHome = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.welcomeContainer}>
-          <Text style={styles.welcomeText}>Olá, {nomeCliente}!</Text>
+          <Text style={styles.welcomeText}>Olá, {nomeEntregador}!</Text>
         </View>
         
         <View style={styles.buttonsContainer}>
@@ -235,4 +210,4 @@ const styles = StyleSheet.create({
 
 });
 
-export default ClienteHome;
+export default EntregadorHome;
