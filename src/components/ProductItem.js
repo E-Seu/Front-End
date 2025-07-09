@@ -150,15 +150,15 @@ const styles = StyleSheet.create({
   },
 
   nome: {
-    fontSize: 14,
-    fontFamily: 'Nunito-Bold',
+    fontSize: 16,
+    fontFamily: 'Nunito-Regular',
     color: '#222222',
     marginBottom: 4,
     lineHeight: 20,
   },
 
   descricao: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: 'Nunito-Regular',
     color: '#888888',
     marginTop: 5,
@@ -167,8 +167,8 @@ const styles = StyleSheet.create({
   },
 
   valor: {
-    fontSize: 12,
-    fontFamily: 'Nunito-Bold',
+    fontSize: 14,
+    fontFamily: 'Nunito-Medium',
     color: '#4E0777',
     marginTop: 10,
   },
@@ -190,8 +190,8 @@ const styles = StyleSheet.create({
   },
 
   restricaoIcon: {
-    width: 18, 
-    height: 18,
+    width: 22, 
+    height: 22,
     marginLeft: 2,
     marginBottom: 2,
   },

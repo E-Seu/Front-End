@@ -218,9 +218,7 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
           </View>
         </ImageBackground>
       </View>
-
-      {/* Título da seção de produtos */}
-      <Text style={styles.sectionTitle}>Cardápio</Text>
+      <View style={styles.sectionTitle}></View>
     </View>
   );
 
@@ -288,6 +286,7 @@ const styles = StyleSheet.create({
     padding: 8,
     alignItems: 'center',
     elevation: 5,
+    gap: 6,
     shadowOffset: {
       width: 2,
       height: 2,
@@ -301,20 +300,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'Nunito-Regular',
     textAlign: 'center',
-    marginBottom: 8,
   },
 
   horarioText: {
     fontSize: 14,
-    fontFamily: 'Nunito-Regular',
+    fontFamily: 'Nunito-Medium',
     textAlign: 'center',
-    marginBottom: 8,
   },
 
   avaliacaoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
   },
 
   avaliacaoText: {
@@ -325,18 +321,13 @@ const styles = StyleSheet.create({
 
   statusText: {
     fontSize: 16,
-    fontFamily: 'Nunito-Regular',
+    fontFamily: 'Nunito-Medium',
     textAlign: 'center',
   },
 
   sectionTitle: {
-    fontSize: 14,
-    fontFamily: 'Nunito-Regular',
-    textAlign: 'center',
-    color: '#888888',
-    marginTop: 80,
+    marginTop: 70,
     marginBottom: 5,
-    marginHorizontal: 20,
   },
 
   separator: {
