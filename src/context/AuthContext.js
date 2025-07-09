@@ -12,16 +12,6 @@ const MOCK_USERS = [
     senha: "123456",
     type: 'cliente'
   },
-  
-  // Restaurante
-  {
-    id: 2,
-    nome: "Restaurante Novo",
-    email: "restaurante@email.com",
-    senha: "123456",
-    type: 'restaurante'
-  },
-  
   // Entregador
   {
     id: 3,
@@ -29,6 +19,15 @@ const MOCK_USERS = [
     email: "maria@email.com",
     senha: "123456",
     type: 'entregador'
+  },
+
+    {
+    id: 4,
+    nome: 'Comida Paixão',
+    email: 'restaurante@email.com',
+    senha: '123456',
+    type: 'restaurante',
+    restaurantId: 1 // ID do restaurante associado
   }
 ];
 

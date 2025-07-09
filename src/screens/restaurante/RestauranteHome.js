@@ -1,161 +1,312 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import FavoritosIcon from '../../assets/icons/favoritosIcon';
+import React, { useMemo, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ImageBackground, FlatList, ActivityIndicator } from 'react-native';
+import RetornarIcon from '../../assets/icons/retornarIcon';
 import OpcoesIcon from '../../assets/icons/opcoesIcon';
-import NotificacaoIcon from '../../assets/icons/notificacaoIcon';
-import RestaurantItem from '../../components/RestaurantItem';
+import EstrelaIcon from '../../assets/icons/estrelaIcon';
+import ProductItem from '../../components/ProductItem';
+import { useAuth } from '../../context/AuthContext';
+import RestaurantService from '../../services/RestaurantService';
 
-const RestauranteHome = () => {
-  const navigation = useNavigation(); // Usar hook ao invés de prop
-  const nomeRestaurante = 'Restaurante'; // Placeholder
+// Imagens genéricas para restaurantes (mesmo array do RestaurantItem)
+const restaurantImages = [
+  require('../../assets/images/restaurantImages/RestauranteImageBlue.png'),
+  require('../../assets/images/restaurantImages/RestauranteImageRed.png'),
+  require('../../assets/images/restaurantImages/RestauranteImageGreen.png'),
+  require('../../assets/images/restaurantImages/RestauranteImageOrange.png'),
+  require('../../assets/images/restaurantImages/RestauranteImagePurple.png'),
+];
 
-  // Estado para gerenciar os favoritos (mock)
-  const [restaurants, setRestaurants] = useState([
-    {
-      id: 1,
-      nome: "Comida Paixão - Feito com amor",
-      info: "Comida caseira",
-      local: "PPGCC",
-      isFavorite: false
-    },
-    {
-      id: 2,
-      nome: "Espetinhos Gente Fina",
-      info: "Grelhados",
-      local: "Praça de Alimentação",
-      isFavorite: false
-    },
-    {
-      id: 3,
-      nome: "Cantinazinhainha",
-      info: "Lanches e sucos",
-      local: "Bloco C - 1º andar",
-      isFavorite: false
-    },
-    {
-      id: 4,
-      nome: "Pizzaaaaa",
-      info: "Pizzas individuais",
-      local: "Centro de Convivência",
-      isFavorite: false
-    },
-    {
-      id: 5,
-      nome: "Açaí do Íaça",
-      info: "Açaí e vitaminas",
-      local: "Quadra Poliesportiva",
-      isFavorite: false
-    },
-    {
-      id: 6,
-      nome: "Burggers", 
-      info: "Hambúrgueres artesanais",
-      local: "Entrada Principal",
-      isFavorite: false
+const RestauranteHome = ({ navigation, route }) => {
+  const { user } = useAuth();
+  const [restaurant, setRestaurant] = useState(null);
+  const [produtos, setProdutos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  // Carregar dados do restaurante do usuário logado
+  useEffect(() => {
+    loadRestaurantData();
+  }, [user]);
+
+  const loadRestaurantData = async () => {
+    try {
+      setLoading(true);
+      console.log('Carregando dados do restaurante para usuário:', user?.email);
+      
+      if (user?.email) {
+        const userRestaurants = await RestaurantService.getRestaurantsByUser(user.email);
+        
+        if (userRestaurants && userRestaurants.length > 0) {
+          const restaurantData = userRestaurants[0]; // Assumindo um restaurante por usuário
+          console.log('Dados do restaurante carregados:', restaurantData);
+          
+          setRestaurant(restaurantData);
+          setProdutos(restaurantData.produtos || []);
+        } else {
+          console.log('Nenhum restaurante encontrado para o usuário');
+          setRestaurant(null);
+          setProdutos([]);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do restaurante:', error);
+      setRestaurant(null);
+      setProdutos([]);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
-  const handleFavoritosPress = () => {
-    // Filtrar apenas os restaurantes favoritos
-    const favoritedRestaurants = restaurants.filter(restaurant => restaurant.isFavorite);
-    
-    // Navegar para a tela de favoritos passando os restaurantes favoritos e callback
-    navigation.navigate('RestauranteFavoritos', { 
-      favoritedRestaurants: favoritedRestaurants,
-      onUpdateFavorites: handleFavoritedPress // Passar a função de callback
-    });
-};
+  // Função para gerar um hash simples baseado no nome (mesma do RestaurantItem)
+  const generateHash = (str) => {
+    if (!str || typeof str !== 'string') {
+      return 0;
+    }
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // converter para inteiro de 32 bits
+    }
+    return Math.abs(hash);
+  };
+
+  // Seleciona a mesma imagem que o RestaurantItem
+  const getImageForRestaurant = useMemo(() => {
+    const restaurantName = restaurant?.nome || 'Restaurante Padrão';
+    const hash = generateHash(restaurantName);
+    const imageIndex = hash % restaurantImages.length;
+    return restaurantImages[imageIndex];
+  }, [restaurant?.nome]);
+
+  // Usar as informações reais do restaurante
+  const restaurantDetails = {
+    nome: restaurant?.nome || "Nome do Restaurante",
+    info: restaurant?.info || "Informações do restaurante",
+    local: restaurant?.local || "Local do restaurante",
+    horarioAbertura: restaurant?.horarioAbertura || "08:00",
+    horarioFechamento: restaurant?.horarioFechamento || "22:00",
+    numeroEstrelas: restaurant?.numeroEstrelas || 4.5,
+    isAberto: restaurant?.isAberto !== undefined ? restaurant.isAberto : true,
+    isFavorite: restaurant?.isFavorite || false
+  };
+
+  const handleStatusToggle = async () => {
+    if (restaurant && !statusLoading) {
+      const newStatus = !restaurant.isAberto;
+      
+      try {
+        setStatusLoading(true);
+        console.log(`Alterando status do restaurante ${restaurant.id} para:`, newStatus);
+        
+        const updatedRestaurant = await RestaurantService.updateRestaurantStatus(restaurant.id, newStatus);
+        
+        if (updatedRestaurant) {
+          setRestaurant(prev => ({ ...prev, isAberto: newStatus }));
+          console.log(`Status atualizado com sucesso para: ${newStatus ? 'Aberto' : 'Fechado'}`);
+        } else {
+          console.error('Falha ao atualizar status do restaurante');
+        }
+      } catch (error) {
+        console.error('Erro ao atualizar status:', error);
+      } finally {
+        setStatusLoading(false);
+      }
+    }
+  };
+
+  const handleBackPress = () => {
+    if (navigation && navigation.goBack) {
+      navigation.goBack();
+    }
+  };
 
   const handleOpcoesPress = () => {
-    console.log('Opções pressionado');
+    console.log('Opções do restaurante pressionado');
+    // Aqui você pode navegar para uma tela de configurações do restaurante
   };
 
-  const handleNotificacaoPress = () => {
-    console.log('Notificação pressionado');
+  const handleQuantityChange = (productId, quantidade) => {
+    console.log(`Produto ${productId}: quantidade ${quantidade}`);
+    // Aqui você pode implementar a lógica para gerenciar o estoque
+    // Exemplo: atualizar estoque no servidor
   };
 
-  const handleFavoritedPress = (restaurantId, isFavorite) => {
-    // Atualizar o estado dos restaurantes
-    setRestaurants(prevRestaurants => 
-      prevRestaurants.map(restaurant => 
-        restaurant.id === restaurantId 
-          ? { ...restaurant, isFavorite: isFavorite }
-          : restaurant
-      )
-    );
-    console.log(`Restaurante ${restaurantId} favorito: ${isFavorite}`);
+  const getStatusText = () => {
+    if (statusLoading) return "Atualizando...";
+    return restaurantDetails.isAberto ? "Aberto" : "Fechado";
   };
 
-  const handleRestaurantPress = (restaurant) => {
-    console.log('Restaurante pressionado:', restaurant.nome);
+  const getStatusColor = () => {
+    if (statusLoading) return "#FFB800";
+    return restaurantDetails.isAberto ? "#8B0BD5" : "#888888";
   };
 
-  const renderRestaurantItem = ({ item }) => (
-    <RestaurantItem
+  // Função para obter estilos dinâmicos baseados no status
+  const getCardStyles = () => {
+    if (restaurantDetails.isAberto) {
+      return {
+        backgroundColor: '#FFFFFF',
+        borderColor: '#DFDCDC',
+        shadowColor: '#DFDCDC',
+      };
+    } else {
+      return {
+        backgroundColor: '#F2F2F2',
+        borderColor: '#888888',
+        shadowColor: '#F3EFEF',
+      };
+    }
+  };
+
+  const getTextColor = () => {
+    return restaurantDetails.isAberto ? '#222222' : '#888888';
+  };
+
+  const getSecondaryTextColor = () => {
+    return restaurantDetails.isAberto ? '#888888' : '#888888';
+  };
+
+  const getAvaliacaoTextColor = () => {
+    return restaurantDetails.isAberto ? '#FF7F23' : '#888888';
+  };
+
+  // Renderizar cada item de produto
+  const renderProductItem = ({ item }) => (
+    <ProductItem
       nome={item.nome}
-      info={item.info}
-      local={item.local}
-      isFavorite={item.isFavorite}
-      onFavoritePress={(isFav) => handleFavoritedPress(item.id, isFav)}
-      onPress={() => handleRestaurantPress(item)}
+      descricao={item.descricao}
+      valor={item.valor}
+      restricoes={item.restricoes}
+      onQuantityChange={(quantidade) => handleQuantityChange(item.id, quantidade)}
     />
   );
 
+  // Header da lista de produtos
   const ListHeader = () => (
-    <Text style={styles.title}>Confira os restaurantes do campus!</Text>
+    <View>
+      {/* Header com imagem de fundo */}
+      <View style={styles.headerContainer}>
+        <ImageBackground 
+          source={getImageForRestaurant} 
+          style={styles.backgroundImage}
+          imageStyle={styles.imageStyle}
+        >
+          {/* Header com botões */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.headerButton} 
+              onPress={handleBackPress}
+            >
+              <RetornarIcon width={24} height={24} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.headerButton} 
+              onPress={handleOpcoesPress}
+            >
+              <OpcoesIcon width={24} height={24} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Card de informações do restaurante */}
+          <View style={[styles.infoCard, getCardStyles()]}>
+            <Text style={[styles.restaurantName, { color: getTextColor() }]} numberOfLines={2}>
+              {restaurantDetails.nome}
+            </Text>
+            
+            <Text style={[styles.horarioText, { color: getSecondaryTextColor() }]}>
+              Aberto de {restaurantDetails.horarioAbertura} às {restaurantDetails.horarioFechamento}
+            </Text>
+            
+            <View style={styles.avaliacaoContainer}>
+              <EstrelaIcon width={16} height={16} isActive={restaurantDetails.isAberto} />
+              <Text style={[styles.avaliacaoText, { color: getAvaliacaoTextColor() }]}>
+                {restaurantDetails.numeroEstrelas} Estrelas
+              </Text>
+            </View>
+            
+            {/* Botão para alternar status - funcionalidade específica do restaurante */}
+            <TouchableOpacity 
+              onPress={handleStatusToggle}
+              disabled={statusLoading}
+              style={[styles.statusButton, statusLoading && styles.statusButtonDisabled]}
+            >
+              <Text style={[styles.statusText, { color: getStatusColor() }]}>
+                {getStatusText()} {!statusLoading && "(Toque para alterar)"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ImageBackground>
+      </View>
+      <View style={styles.sectionTitle}></View>
+    </View>
   );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8B0BD5" />
+          <Text style={styles.loadingText}>Carregando dados do restaurante...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!restaurant) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>
+            Nenhum restaurante encontrado para este usuário ({user?.email})
+          </Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadRestaurantData}>
+            <Text style={styles.retryButtonText}>Tentar novamente</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.welcomeContainer}>
-          <Text style={styles.welcomeText}>Olá, {nomeRestaurante}!</Text>
-        </View>
-        
-        <View style={styles.buttonsContainer}>
-          <TouchableOpacity 
-            style={styles.iconButton} 
-            onPress={handleFavoritosPress}
-          >
-            <FavoritosIcon width={24} height={24} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.iconButton} 
-            onPress={handleOpcoesPress}
-          >
-            <OpcoesIcon width={24} height={24} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.iconButton} 
-            onPress={handleNotificacaoPress}
-          >
-            <NotificacaoIcon width={24} height={24} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Lista de restaurantes */}
       <FlatList
-        data={restaurants}
-        renderItem={renderRestaurantItem}
+        data={produtos}
+        renderItem={renderProductItem}
         keyExtractor={(item) => item.id.toString()}
         ListHeaderComponent={ListHeader}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        refreshing={loading}
+        onRefresh={loadRestaurantData}
       />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+
+  listContainer: {
+    paddingBottom: 20,
+  },
+
+  headerContainer: {
+    height: 150,
+  },
+
+  backgroundImage: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+
+  imageStyle: {
+    width: '100%',
   },
 
   header: {
@@ -163,29 +314,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    paddingTop: 20,
+    zIndex: 1,
   },
 
-  welcomeContainer: {
-    flex: 1,
-  },
-
-  welcomeText: {
-    fontSize: 16,
-    color: '#222222',
-    fontFamily: 'Nunito-Regular',
-  },
-
-  buttonsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-
-  iconButton: {
+  headerButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -194,20 +327,111 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  listContainer: {
+  infoCard: {
+    marginHorizontal: 35,
+    marginTop: 30,
+    borderRadius: 8,
+    borderWidth: 0.5,
+    padding: 8,
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    elevation: 5,
+    gap: 6,
+    shadowOffset: {
+      width: 2,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    zIndex: 1,
   },
 
-  title: {
+  restaurantName: {
+    fontSize: 18,
+    fontFamily: 'Nunito-Regular',
+    textAlign: 'center',
+  },
+
+  horarioText: {
     fontSize: 14,
-    fontFamily: 'Nunito-Bold',
-    color: '#4E0777',
-    marginBottom: 15,
-    marginTop: 20,
+    fontFamily: 'Nunito-Medium',
+    textAlign: 'center',
   },
 
+  avaliacaoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  avaliacaoText: {
+    fontSize: 14,
+    fontFamily: 'Nunito-SemiBold',
+    marginLeft: 6,
+  },
+
+  statusButton: {
+    padding: 4,
+  },
+
+  statusButtonDisabled: {
+    opacity: 0.6,
+  },
+
+  statusText: {
+    fontSize: 16,
+    fontFamily: 'Nunito-Medium',
+    textAlign: 'center',
+  },
+
+  sectionTitle: {
+    marginTop: 70,
+    marginBottom: 5,
+  },
+
+  separator: {
+    height: 8,
+  },
+
+  // Estilos para loading e erro
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  loadingText: {
+    fontSize: 16,
+    color: '#888888',
+    fontFamily: 'Nunito-Regular',
+  },
+
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    gap: 20,
+  },
+
+  errorText: {
+    fontSize: 16,
+    color: '#888888',
+    fontFamily: 'Nunito-Regular',
+    textAlign: 'center',
+  },
+
+  retryButton: {
+    backgroundColor: '#8B0BD5',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Nunito-SemiBold',
+  },
 });
 
 export default RestauranteHome;

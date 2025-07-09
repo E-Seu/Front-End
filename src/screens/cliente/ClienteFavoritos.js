@@ -8,7 +8,12 @@ const ClienteFavoritos = ({ navigation, route }) => {
   const { favoritedRestaurants = [], onUpdateFavorites } = route.params || {};
   
   // Estado local para gerenciar a lista de favoritos
-  const [localFavorites, setLocalFavorites] = useState(favoritedRestaurants);
+  const [localFavorites, setLocalFavorites] = useState(
+    favoritedRestaurants.map(restaurant => ({
+      ...restaurant,
+      isFavorite: true // Garantir que todos começam como favoritos
+    }))
+  );
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -48,13 +53,12 @@ const ClienteFavoritos = ({ navigation, route }) => {
     navigation.navigate('RestauranteDetalhes', { restaurant });
   };
 
-
   const renderRestaurantItem = ({ item }) => (
     <RestaurantItem
       nome={item.nome}
       info={item.info}
       local={item.local}
-      isFavorite={item.isFavorite}
+      isFavorite={true} // Força o coração preenchido pois está na lista de favoritos
       onFavoritePress={(isFav) => handleFavoritePress(item.id, isFav)}
       onPress={() => handleRestaurantPress(item)}
     />
