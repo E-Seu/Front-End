@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ImageBackground, FlatList } from 'react-native';
+import React, { useMemo, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ImageBackground, FlatList, ActivityIndicator } from 'react-native';
 import RetornarIcon from '../../assets/icons/retornarIcon';
 import OpcoesIcon from '../../assets/icons/opcoesIcon';
 import EstrelaIcon from '../../assets/icons/estrelaIcon';
 import ProductItem from '../../components/ProductItem';
+import RestaurantService from '../../services/RestaurantService';
 
 // Imagens genéricas para restaurantes (mesmo array do RestaurantItem)
 const restaurantImages = [
@@ -16,69 +17,51 @@ const restaurantImages = [
 
 const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   const { restaurant } = route.params || {};
+  
+  const [produtos, setProdutos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Mock data para produtos do restaurante
-  const [produtos, setProdutos] = useState([
-    {
-      id: 1,
-      nome: "X-Burger Especial",
-      descricao: "Hambúrguer artesanal com carne 180g, queijo cheddar, bacon, alface, tomate e molho especial da casa",
-      valor: 28.90,
-      restricoes: []
-    },
-    {
-      id: 2,
-      nome: "Pizza Margherita Vegana",
-      descricao: "Pizza tradicional com molho de tomate, queijo vegano, manjericão fresco e azeite extravirgem",
-      valor: 32.50,
-      restricoes: ['vegan', 'lactoseFree']
-    },
-    {
-      id: 3,
-      nome: "Salada Caesar Sem Glúten",
-      descricao: "Mix de folhas verdes, croutons sem glúten, parmesão, molho caesar e peito de frango grelhado",
-      valor: 24.00,
-      restricoes: ['glutenFree']
-    },
-    {
-      id: 4,
-      nome: "Açaí Bowl Completo",
-      descricao: "Açaí puro batido com banana, granola caseira, frutas da estação, mel e castanhas",
-      valor: 18.50,
-      restricoes: ['vegan', 'glutenFree', 'lactoseFree']
-    },
-    {
-      id: 5,
-      nome: "Wrap de Frango Grelhado",
-      descricao: "Tortilha integral com frango desfiado, queijo, alface, tomate, cenoura e molho iogurte",
-      valor: 22.90,
-      restricoes: []
-    },
-    {
-      id: 6,
-      nome: "Brownie Vegano",
-      descricao: "Brownie de chocolate amargo sem ingredientes de origem animal, servido com sorvete vegano",
-      valor: 15.00,
-      restricoes: ['vegan', 'lactoseFree']
-    },
-    {
-      id: 7,
-      nome: "Suco Natural Detox",
-      descricao: "Blend de couve, maçã verde, limão, gengibre e água de coco natural",
-      valor: 12.00,
-      restricoes: ['vegan', 'glutenFree', 'lactoseFree', 'peanutFree']
-    },
-    {
-      id: 8,
-      nome: "Lasanha Sem Lactose",
-      descricao: "Lasanha de berinjela com molho bolonhesa, queijo sem lactose e manjericão",
-      valor: 26.50,
-      restricoes: ['lactoseFree']
+  // Carregar produtos do restaurante
+  useEffect(() => {
+    loadRestaurantProducts();
+  }, [restaurant]);
+
+  const loadRestaurantProducts = async () => {
+    try {
+      setLoading(true);
+      console.log('🔄 Carregando produtos do restaurante:', restaurant?.restaurante_id || restaurant?.id);
+      
+      if (restaurant) {
+        const restaurantId = restaurant.restaurante_id || restaurant.id;
+        const productsList = await RestaurantService.getProductsByRestaurant(restaurantId);
+        
+        console.log('📦 Produtos carregados:', productsList);
+        setProdutos(productsList || []);
+      } else {
+        console.log('❌ Nenhum restaurante foi passado como parâmetro');
+        setProdutos([]);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar produtos:', error);
+      setProdutos([]);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  // Função para refresh (pull to refresh)
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadRestaurantProducts();
+    setRefreshing(false);
+  };
 
   // Função para gerar um hash simples baseado no nome (mesma do RestaurantItem)
   const generateHash = (str) => {
+    if (!str || typeof str !== 'string') {
+      return 0;
+    }
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
@@ -90,21 +73,24 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
 
   // Seleciona a mesma imagem que o RestaurantItem
   const getImageForRestaurant = useMemo(() => {
-    const hash = generateHash(restaurant?.nome || '');
+    const restaurantName = restaurant?.nome || 'Restaurante Padrão';
+    const hash = generateHash(restaurantName);
     const imageIndex = hash % restaurantImages.length;
     return restaurantImages[imageIndex];
   }, [restaurant?.nome]);
 
-  // Usar as informações reais do restaurante
+  // Usar as informações reais do restaurante com os nomes corretos da API
   const restaurantDetails = {
     nome: restaurant?.nome || "Nome do Restaurante",
     info: restaurant?.info || "Informações do restaurante",
-    local: restaurant?.local || "Local do restaurante",
-    horarioAbertura: restaurant?.horarioAbertura || "08:00",
-    horarioFechamento: restaurant?.horarioFechamento || "22:00",
-    numeroEstrelas: restaurant?.numeroEstrelas || 4.5,
-    isAberto: restaurant?.isAberto !== undefined ? restaurant.isAberto : true,
-    isFavorite: restaurant?.isFavorite || false
+    local: restaurant?.local || restaurant?.localizacao || "Local do restaurante", // Suporte para ambos os nomes
+    horarioAbertura: restaurant?.horario_abertura || "08:00",
+    horarioFechamento: restaurant?.horario_fechamento || "22:00",
+    numeroEstrelas: restaurant?.numero_estrelas || restaurant?.avaliacao || 4.5, // Suporte para ambos os nomes
+    isAberto: restaurant?.disponivel !== undefined ? restaurant.disponivel : true,
+    telefone: restaurant?.telefone || "",
+    tipo_restaurante: restaurant?.tipo_restaurante || "",
+    saldo: restaurant?.saldo || 0
   };
 
   const handleBackPress = () => {
@@ -121,7 +107,7 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   };
 
   const getStatusText = () => {
-    return restaurantDetails.isAberto ? "Aberto" : "Fechado";
+    return restaurantDetails.isAberto ? "Disponível" : "Indisponível";
   };
 
   const getStatusColor = () => {
@@ -157,14 +143,16 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
     return restaurantDetails.isAberto ? '#FF7F23' : '#888888';
   };
 
-  // Renderizar cada item de produto
+  // Renderizar cada item de produto com campos corretos da API
   const renderProductItem = ({ item }) => (
     <ProductItem
       nome={item.nome}
       descricao={item.descricao}
       valor={item.valor}
-      restricoes={item.restricoes}
-      onQuantityChange={(quantidade) => handleQuantityChange(item.id, quantidade)}
+      restricoes={item.restricoes || []}
+      disponivel={item.disponivel}
+      tempo_preparo={item.tempo_preparo} // Campo adicional da API
+      onQuantityChange={(quantidade) => handleQuantityChange(item.id || item.produto_id, quantidade)}
     />
   );
 
@@ -218,20 +206,86 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
           </View>
         </ImageBackground>
       </View>
-      <View style={styles.sectionTitle}></View>
+      <View style={styles.sectionTitle}>
+      </View>
     </View>
   );
+
+  // Componente de loading
+  const LoadingComponent = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#8B0BD5" />
+      <Text style={styles.loadingText}>Carregando produtos...</Text>
+    </View>
+  );
+
+  // Componente para lista vazia
+  const EmptyComponent = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyText}>
+        {restaurantDetails.isAberto 
+          ? "Este restaurante ainda não possui produtos cadastrados."
+          : "Este restaurante está indisponível no momento."
+        }
+      </Text>
+    </View>
+  );
+
+  // Se estiver carregando, mostrar loading
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.headerContainer}>
+          <ImageBackground 
+            source={getImageForRestaurant} 
+            style={styles.backgroundImage}
+            imageStyle={styles.imageStyle}
+          >
+            <View style={styles.header}>
+              <TouchableOpacity 
+                style={styles.headerButton} 
+                onPress={handleBackPress}
+              >
+                <RetornarIcon width={24} height={24} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.headerButton} 
+                onPress={handleOpcoesPress}
+              >
+                <OpcoesIcon width={24} height={24} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.infoCard, getCardStyles()]}>
+              <Text style={[styles.restaurantName, { color: getTextColor() }]}>
+                {restaurantDetails.nome}
+              </Text>
+              <Text style={[styles.statusText, { color: getStatusColor() }]}>
+                {getStatusText()}
+              </Text>
+            </View>
+          </ImageBackground>
+        </View>
+        <LoadingComponent />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
         data={produtos}
         renderItem={renderProductItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => (item.id || item.produto_id).toString()}
         ListHeaderComponent={ListHeader}
+        ListEmptyComponent={EmptyComponent}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+        removeClippedSubviews={false} // Melhor performance
       />
     </SafeAreaView>
   );
@@ -319,6 +373,19 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 
+  // Novos estilos para campos adicionais
+  tipoText: {
+    fontSize: 12,
+    fontFamily: 'Nunito-Medium',
+    textAlign: 'center',
+  },
+
+  telefoneText: {
+    fontSize: 12,
+    fontFamily: 'Nunito-Regular',
+    textAlign: 'center',
+  },
+
   statusText: {
     fontSize: 16,
     fontFamily: 'Nunito-Medium',
@@ -328,12 +395,49 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginTop: 70,
     marginBottom: 5,
+    paddingHorizontal: 20,
+  },
+
+  sectionTitleText: {
+    fontSize: 16,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#222222',
+    textAlign: 'center',
   },
 
   separator: {
     height: 8,
   },
 
+  // Estilos para loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 50,
+    gap: 10,
+  },
+
+  loadingText: {
+    fontSize: 16,
+    color: '#888888',
+    fontFamily: 'Nunito-Regular',
+  },
+
+  // Estilo para lista vazia
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    marginTop: 50,
+  },
+
+  emptyText: {
+    fontSize: 16,
+    color: '#888888',
+    fontFamily: 'Nunito-Regular',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
 });
 
 export default ClienteRestauranteDetalhes;

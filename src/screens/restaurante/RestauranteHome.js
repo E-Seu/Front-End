@@ -41,7 +41,10 @@ const RestauranteHome = ({ navigation, route }) => {
           console.log('Dados do restaurante carregados:', restaurantData);
           
           setRestaurant(restaurantData);
-          setProdutos(restaurantData.produtos || []);
+          
+          // Buscar produtos específicos do restaurante através da API
+          const productsList = await RestaurantService.getProductsByRestaurant(restaurantData.id || restaurantData.restaurante_id);
+          setProdutos(productsList || restaurantData.produtos || []);
         } else {
           console.log('Nenhum restaurante encontrado para o usuário');
           setRestaurant(null);
@@ -79,31 +82,33 @@ const RestauranteHome = ({ navigation, route }) => {
     return restaurantImages[imageIndex];
   }, [restaurant?.nome]);
 
-  // Usar as informações reais do restaurante
-  const restaurantDetails = {
-    nome: restaurant?.nome || "Nome do Restaurante",
-    info: restaurant?.info || "Informações do restaurante",
-    local: restaurant?.local || "Local do restaurante",
-    horarioAbertura: restaurant?.horarioAbertura || "08:00",
-    horarioFechamento: restaurant?.horarioFechamento || "22:00",
-    numeroEstrelas: restaurant?.numeroEstrelas || 4.5,
-    isAberto: restaurant?.isAberto !== undefined ? restaurant.isAberto : true,
-    isFavorite: restaurant?.isFavorite || false
-  };
+const restaurantDetails = {
+  nome: restaurant?.nome || "Nome do Restaurante",
+  info: restaurant?.info || "Informações do restaurante",
+  local: restaurant?.local || restaurant?.localizacao || "Local do restaurante", // Suporte para ambos
+  horarioAbertura: restaurant?.horario_abertura || "08:00",
+  horarioFechamento: restaurant?.horario_fechamento || "22:00",
+  numeroEstrelas: restaurant?.numero_estrelas || restaurant?.avaliacao || 4.5, // Suporte para ambos
+  isAberto: restaurant?.disponivel !== undefined ? restaurant.disponivel : true,
+  telefone: restaurant?.telefone || "",
+  tipo_restaurante: restaurant?.tipo_restaurante || "",
+  saldo: restaurant?.saldo || 0
+};
 
   const handleStatusToggle = async () => {
     if (restaurant && !statusLoading) {
-      const newStatus = !restaurant.isAberto;
+      const newStatus = !restaurant.disponivel; // Mudança: usando disponivel
       
       try {
         setStatusLoading(true);
-        console.log(`Alterando status do restaurante ${restaurant.id} para:`, newStatus);
+        console.log(`Alterando status do restaurante ${restaurant.id || restaurant.restaurante_id} para:`, newStatus);
         
-        const updatedRestaurant = await RestaurantService.updateRestaurantStatus(restaurant.id, newStatus);
+        const restaurantId = restaurant.id || restaurant.restaurante_id;
+        const updatedRestaurant = await RestaurantService.updateRestaurantStatus(restaurantId, newStatus);
         
         if (updatedRestaurant) {
-          setRestaurant(prev => ({ ...prev, isAberto: newStatus }));
-          console.log(`Status atualizado com sucesso para: ${newStatus ? 'Aberto' : 'Fechado'}`);
+          setRestaurant(prev => ({ ...prev, disponivel: newStatus })); // Mudança: usando disponivel
+          console.log(`Status atualizado com sucesso para: ${newStatus ? 'Disponível' : 'Indisponível'}`);
         } else {
           console.error('Falha ao atualizar status do restaurante');
         }
@@ -129,12 +134,13 @@ const RestauranteHome = ({ navigation, route }) => {
   const handleQuantityChange = (productId, quantidade) => {
     console.log(`Produto ${productId}: quantidade ${quantidade}`);
     // Aqui você pode implementar a lógica para gerenciar o estoque
-    // Exemplo: atualizar estoque no servidor
+    // Exemplo: atualizar disponibilidade do produto
+    // RestaurantService.updateProductAvailability(restaurant.id, productId, quantidade > 0);
   };
 
   const getStatusText = () => {
     if (statusLoading) return "Atualizando...";
-    return restaurantDetails.isAberto ? "Aberto" : "Fechado";
+    return restaurantDetails.isAberto ? "Disponível" : "Indisponível"; // Mudança: texto mais claro
   };
 
   const getStatusColor = () => {
@@ -171,14 +177,15 @@ const RestauranteHome = ({ navigation, route }) => {
     return restaurantDetails.isAberto ? '#FF7F23' : '#888888';
   };
 
-  // Renderizar cada item de produto
+  // Renderizar cada item de produto com campos corretos da API
   const renderProductItem = ({ item }) => (
     <ProductItem
       nome={item.nome}
       descricao={item.descricao}
-      valor={item.valor}
-      restricoes={item.restricoes}
-      onQuantityChange={(quantidade) => handleQuantityChange(item.id, quantidade)}
+      valor={item.valor || item.preco} // Suporte para ambos os nomes
+      restricoes={item.restricoes || []}
+      disponivel={item.disponivel}
+      onQuantityChange={(quantidade) => handleQuantityChange(item.id || item.produto_id, quantidade)}
     />
   );
 
@@ -274,7 +281,7 @@ const RestauranteHome = ({ navigation, route }) => {
       <FlatList
         data={produtos}
         renderItem={renderProductItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => (item.id || item.produto_id).toString()}
         ListHeaderComponent={ListHeader}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
@@ -366,6 +373,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Nunito-SemiBold',
     marginLeft: 6,
+  },
+
+  // Novos estilos para campos adicionais
+  tipoText: {
+    fontSize: 12,
+    fontFamily: 'Nunito-Medium',
+    textAlign: 'center',
+  },
+
+  telefoneText: {
+    fontSize: 12,
+    fontFamily: 'Nunito-Regular',
+    textAlign: 'center',
   },
 
   statusButton: {

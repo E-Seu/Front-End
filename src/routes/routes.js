@@ -16,18 +16,18 @@ export default function Routes() {
 
   console.log('Routes - isAuthenticated:', isAuthenticated, 'userType:', userType, 'loading:', loading);
 
-  // Se ainda está carregando, mostra a SplashScreen
-  if (loading) {
-    return (
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Splash" component={SplashScreen} />
-      </Stack.Navigator>
-    );
-  }
+  // // Se ainda está carregando, mostra a SplashScreen
+  // if (loading) {
+  //   return (
+  //     <Stack.Navigator screenOptions={{ headerShown: false }}>
+  //       <Stack.Screen name="Splash" component={SplashScreen} />
+  //     </Stack.Navigator>
+  //   );
+  // }
 
   return (
     <Stack.Navigator 
-      initialRouteName={isAuthenticated ? "AppLayout" : "Welcome"} 
+      initialRouteName={"Splash"} 
       screenOptions={{
         animation: 'fade',
         animationDuration: 300,

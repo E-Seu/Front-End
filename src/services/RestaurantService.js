@@ -1,363 +1,195 @@
-const API_BASE_URL = 'http://localhost:3000/api'; // Substitua pela URL da sua API
+import axios from 'axios';
 
-// Mock data dos restaurantes cadastrados (temporário até conectar com API)
+const API_BASE_URL = 'http://10.0.2.2:8000'; // Android Emulator
+
+// Configuração global do Axios
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000, // 10 segundos
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
+
+// Interceptor para logs automáticos
+apiClient.interceptors.request.use(
+  (config) => {
+    console.log(`🔄 ${config.method?.toUpperCase()} ${config.url}`);
+    return config;
+  },
+  (error) => {
+    console.error('❌ Erro na requisição:', error);
+    return Promise.reject(error);
+  }
+);
+
+apiClient.interceptors.response.use(
+  (response) => {
+    console.log(`✅ ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`);
+    return response;
+  },
+  (error) => {
+    console.error(`❌ ${error.config?.method?.toUpperCase()} ${error.config?.url} - Erro:`, error.message);
+    return Promise.reject(error);
+  }
+);
+
+// Mock data atualizado com os campos corretos da API
 const MOCK_RESTAURANTS = [
   {
-    id: 1,
     nome: "Comida Paixão - Feito com amor",
-    telefone: "(85) 99999-1234",
-    tipo_restaurante: "Comida Caseira",
-    localizacao: "PPGCC",
-    avaliacao: 5.0,
-    info: "Restaurante especializado em comida caseira, feita com muito amor e carinho. Oferecemos pratos tradicionais com ingredientes frescos e selecionados.",
-    email: "restaurante@email.com", // Email do usuário cadastrado
+    info: "Restaurante especializado em comida caseira",
+    local: "PPGCC",
+    email: "restaurante@email.com",
     horario_abertura: "07:00",
     horario_fechamento: "18:00",
+    numero_estrelas: 5.0,
     disponivel: true,
-    saldo: 1250.75,
-    produtos: [
-      {
-        id: 1,
-        nome: "X-Burger Especial",
-        descricao: "Hambúrguer artesanal com carne 180g, queijo cheddar, bacon, alface, tomate e molho especial da casa",
-        valor: 28.90,
-        restricoes: []
-      },
-      {
-        id: 2,
-        nome: "Pizza Margherita Vegana",
-        descricao: "Pizza tradicional com molho de tomate, queijo vegano, manjericão fresco e azeite extravirgem",
-        valor: 32.50,
-        restricoes: ['vegan', 'lactoseFree']
-      },
-      {
-        id: 3,
-        nome: "Salada Caesar Sem Glúten",
-        descricao: "Mix de folhas verdes, croutons sem glúten, parmesão, molho caesar e peito de frango grelhado",
-        valor: 24.00,
-        restricoes: ['glutenFree']
-      },
-      {
-        id: 4,
-        nome: "Açaí Bowl Completo",
-        descricao: "Açaí puro batido com banana, granola caseira, frutas da estação, mel e castanhas",
-        valor: 18.50,
-        restricoes: ['vegan', 'glutenFree', 'lactoseFree']
-      },
-      {
-        id: 5,
-        nome: "Wrap de Frango Grelhado",
-        descricao: "Tortilha integral com frango desfiado, queijo, alface, tomate, cenoura e molho iogurte",
-        valor: 22.90,
-        restricoes: []
-      },
-      {
-        id: 6,
-        nome: "Brownie Vegano",
-        descricao: "Brownie de chocolate amargo sem ingredientes de origem animal, servido com sorvete vegano",
-        valor: 15.00,
-        restricoes: ['vegan', 'lactoseFree']
-      },
-      {
-        id: 7,
-        nome: "Suco Natural Detox",
-        descricao: "Blend de couve, maçã verde, limão, gengibre e água de coco natural",
-        valor: 12.00,
-        restricoes: ['vegan', 'glutenFree', 'lactoseFree', 'peanutFree']
-      },
-      {
-        id: 8,
-        nome: "Lasanha Sem Lactose",
-        descricao: "Lasanha de berinjela com molho bolonhesa, queijo sem lactose e manjericão",
-        valor: 26.50,
-        restricoes: ['lactoseFree']
-      }
-    ]
-  },
-  {
-    id: 2,
-    nome: "Sabor & Arte",
-    telefone: "(85) 98888-5678",
-    tipo_restaurante: "Culinária Contemporânea",
-    localizacao: "Centro Acadêmico",
-    avaliacao: 4.5,
-    info: "Restaurante moderno com foco em culinária contemporânea. Combinamos técnicas tradicionais com toques inovadores para criar experiências gastronômicas únicas.",
-    email: "sabor@email.com",
-    horario_abertura: "08:00",
-    horario_fechamento: "20:00",
-    disponivel: true,
-    saldo: 890.30,
-    produtos: [
-      {
-        id: 9,
-        nome: "Risoto de Camarão",
-        descricao: "Risoto cremoso com camarões frescos e ervas finas",
-        valor: 35.90,
-        restricoes: ['glutenFree']
-      },
-      {
-        id: 10,
-        nome: "Salmão Grelhado",
-        descricao: "Salmão grelhado com legumes e molho de mostarda",
-        valor: 42.00,
-        restricoes: ['glutenFree']
-      },
-      {
-        id: 11,
-        nome: "Pasta Carbonara Premium",
-        descricao: "Massa fresca com molho carbonara artesanal, bacon defumado e parmesão",
-        valor: 28.00,
-        restricoes: []
-      }
-    ]
-  },
-  {
-    id: 3,
-    nome: "Verde & Natural",
-    telefone: "(85) 97777-9012",
-    tipo_restaurante: "Comida Saudável",
-    localizacao: "Biblioteca Central",
-    avaliacao: 4.8,
-    info: "Especializado em alimentação saudável e sustentável. Oferecemos opções veganas, vegetarianas e funcionais para quem busca bem-estar e sabor.",
-    email: "verde@email.com",
-    horario_abertura: "06:00",
-    horario_fechamento: "16:00",
-    disponivel: false,
-    saldo: 567.20,
-    produtos: [
-      {
-        id: 12,
-        nome: "Bowl Verde",
-        descricao: "Bowl com quinoa, abacate, brócolis e molho tahine",
-        valor: 19.90,
-        restricoes: ['vegan', 'glutenFree', 'lactoseFree']
-      },
-      {
-        id: 13,
-        nome: "Smoothie Detox",
-        descricao: "Smoothie de frutas vermelhas com spirulina",
-        valor: 14.50,
-        restricoes: ['vegan', 'glutenFree', 'lactoseFree']
-      },
-      {
-        id: 14,
-        nome: "Salada Buddha Bowl",
-        descricao: "Mix de vegetais coloridos, grãos, sementes e molho de tahine",
-        valor: 22.90,
-        restricoes: ['vegan', 'glutenFree', 'lactoseFree']
-      }
-    ]
-  },
-  {
-    id: 4,
-    nome: "Pizzaria Bella Napoli",
-    telefone: "(85) 96666-3456",
-    tipo_restaurante: "Pizzaria",
-    localizacao: "Praça de Alimentação",
-    avaliacao: 4.3,
-    info: "Pizzaria tradicional italiana com receitas familiares passadas de geração em geração. Massa artesanal e ingredientes importados da Itália.",
-    email: "bella@email.com",
-    horario_abertura: "11:00",
-    horario_fechamento: "23:00",
-    disponivel: true,
-    saldo: 2150.40,
-    produtos: [
-      {
-        id: 15,
-        nome: "Pizza Margherita",
-        descricao: "Pizza clássica com molho de tomate, mozzarella e manjericão fresco",
-        valor: 35.00,
-        restricoes: []
-      },
-      {
-        id: 16,
-        nome: "Pizza Quattro Stagioni",
-        descricao: "Pizza dividida em quatro sabores: cogumelos, presunto, alcachofra e azeitonas",
-        valor: 42.00,
-        restricoes: []
-      },
-      {
-        id: 17,
-        nome: "Calzone Tradicional",
-        descricao: "Calzone recheado com ricota, mozzarella e molho de tomate",
-        valor: 28.50,
-        restricoes: []
-      }
-    ]
-  },
-  {
-    id: 5,
-    nome: "Burguer Station",
-    telefone: "(85) 95555-7890",
-    tipo_restaurante: "Hamburgueria",
-    localizacao: "Cantina Universitária",
-    avaliacao: 4.6,
-    info: "Hamburgueria gourmet com carnes premium e pães artesanais. Oferecemos opções para todos os gostos, incluindo veganas e vegetarianas.",
-    email: "burger@email.com",
-    horario_abertura: "10:00",
-    horario_fechamento: "22:00",
-    disponivel: true,
-    saldo: 1876.90,
-    produtos: [
-      {
-        id: 18,
-        nome: "Classic Burger",
-        descricao: "Hambúrguer clássico com carne 150g, queijo, alface, tomate e molho especial",
-        valor: 25.90,
-        restricoes: []
-      },
-      {
-        id: 19,
-        nome: "Veggie Burger",
-        descricao: "Hambúrguer vegano com proteína de soja, queijo vegano e vegetais frescos",
-        valor: 23.90,
-        restricoes: ['vegan', 'lactoseFree']
-      },
-      {
-        id: 20,
-        nome: "Double Bacon",
-        descricao: "Dois hambúrgueres, bacon crocante, queijo cheddar e molho barbecue",
-        valor: 32.90,
-        restricoes: []
-      }
-    ]
+    telefone: "(85) 99999-1234",
+    tipo_restaurante: "Comida Caseira",
+    saldo: "1250.75",
+    restaurante_id: 1,
+    usuario_id: 1
   }
 ];
 
 class RestaurantService {
+  // Método para normalizar dados do restaurante
+  static normalizeRestaurantData(restaurant) {
+    return {
+      ...restaurant,
+      id: restaurant.restaurante_id,
+      restaurante_id: restaurant.restaurante_id,
+      localizacao: restaurant.local,
+      avaliacao: restaurant.numero_estrelas,
+      saldo: typeof restaurant.saldo === 'string' ? parseFloat(restaurant.saldo) : restaurant.saldo
+    };
+  }
+
+  // Método de teste de conexão
+  static async testConnection() {
+    try {
+      console.log('🔍 Testando conexão com a API...');
+      
+      const response = await apiClient.get('/restaurantes');
+      
+      console.log('✅ API funcionando! Dados brutos:', response.data);
+      
+      // Normalizar dados da API
+      const normalizedData = response.data.map(restaurant => this.normalizeRestaurantData(restaurant));
+      console.log('🔄 Dados normalizados:', normalizedData);
+      
+      return { success: true, data: normalizedData };
+    } catch (error) {
+      console.log('❌ Erro de conexão:', error.message);
+      
+      if (error.code === 'ECONNABORTED') {
+        console.log('⏰ Timeout na conexão');
+      } else if (error.code === 'NETWORK_ERROR') {
+        console.log('🌐 Erro de rede');
+      } else if (error.response) {
+        console.log('📡 Resposta da API:', error.response.status, error.response.data);
+      }
+      
+      return { success: false, error: error.message };
+    }
+  }
+
   // Buscar todos os restaurantes
   static async getAllRestaurants() {
     try {
-      // Quando conectar com API, substitua por:
-      // const response = await fetch(`${API_BASE_URL}/restaurants`);
-      // if (!response.ok) {
-      //   throw new Error(`HTTP error! status: ${response.status}`);
-      // }
-      // return await response.json();
+      console.log('🔄 Buscando todos os restaurantes...');
       
-      // Por enquanto, retorna dados mock com delay simulado
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          console.log('RestaurantService: Carregando todos os restaurantes');
-          resolve(MOCK_RESTAURANTS);
-        }, 500);
-      });
+      const response = await apiClient.get('/restaurantes');
+      const normalizedData = response.data.map(restaurant => this.normalizeRestaurantData(restaurant));
+      
+      console.log('✅ Restaurantes carregados da API:', normalizedData.length);
+      return normalizedData;
     } catch (error) {
-      console.error('Erro ao buscar restaurantes:', error);
-      return [];
+      console.log('📦 Erro ao buscar restaurantes, usando dados mock:', error.message);
+      return MOCK_RESTAURANTS.map(restaurant => this.normalizeRestaurantData(restaurant));
     }
   }
 
   // Buscar restaurante por ID
   static async getRestaurantById(id) {
     try {
-      // Quando conectar com API:
-      // const response = await fetch(`${API_BASE_URL}/restaurants/${id}`);
-      // if (!response.ok) {
-      //   throw new Error(`HTTP error! status: ${response.status}`);
-      // }
-      // return await response.json();
+      console.log(`🔄 Buscando restaurante ID ${id}...`);
       
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const restaurant = MOCK_RESTAURANTS.find(r => r.id === parseInt(id));
-          console.log(`RestaurantService: Buscando restaurante ID ${id}:`, restaurant);
-          resolve(restaurant || null);
-        }, 300);
-      });
+      const response = await apiClient.get(`/restaurantes/${id}`);
+      const normalizedData = this.normalizeRestaurantData(response.data);
+      
+      console.log(`✅ Restaurante ${id} encontrado:`, normalizedData);
+      return normalizedData;
     } catch (error) {
-      console.error('Erro ao buscar restaurante por ID:', error);
-      return null;
+      console.log(`📦 Erro ao buscar restaurante ${id}, usando mock:`, error.message);
+      
+      const restaurant = MOCK_RESTAURANTS.find(r => r.restaurante_id === parseInt(id));
+      return restaurant ? this.normalizeRestaurantData(restaurant) : null;
     }
   }
 
-  // Buscar restaurantes por usuário (para o painel do restaurante)
+  // Buscar restaurantes por usuário
   static async getRestaurantsByUser(userEmail) {
     try {
-      // Quando conectar com API:
-      // const response = await fetch(`${API_BASE_URL}/restaurants/user/${encodeURIComponent(userEmail)}`);
-      // if (!response.ok) {
-      //   throw new Error(`HTTP error! status: ${response.status}`);
-      // }
-      // return await response.json();
+      console.log(`🔄 Buscando restaurantes para usuário: ${userEmail}`);
       
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const userRestaurants = MOCK_RESTAURANTS.filter(r => r.email === userEmail);
-          console.log(`RestaurantService: Buscando restaurantes do usuário ${userEmail}:`, userRestaurants);
-          resolve(userRestaurants);
-        }, 300);
-      });
+      const allRestaurants = await this.getAllRestaurants();
+      const userRestaurants = allRestaurants.filter(r => r.email === userEmail);
+      
+      console.log(`🎯 Encontrados ${userRestaurants.length} restaurantes para ${userEmail}`);
+      return userRestaurants;
     } catch (error) {
-      console.error('Erro ao buscar restaurantes do usuário:', error);
+      console.error('❌ Erro ao buscar restaurantes do usuário:', error);
       return [];
     }
   }
 
-  // Atualizar status do restaurante (aberto/fechado)
-  static async updateRestaurantStatus(id, disponivel) {
+  // Buscar produtos de um restaurante
+  static async getProductsByRestaurant(restaurantId) {
     try {
-      // Quando conectar com API:
-      // const response = await fetch(`${API_BASE_URL}/restaurants/${id}/status`, {
-      //   method: 'PATCH',
-      //   headers: { 
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${token}` // Se necessário
-      //   },
-      //   body: JSON.stringify({ disponivel })
-      // });
-      // if (!response.ok) {
-      //   throw new Error(`HTTP error! status: ${response.status}`);
-      // }
-      // return await response.json();
+      console.log(`🔄 Buscando produtos do restaurante ${restaurantId}...`);
       
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const restaurant = MOCK_RESTAURANTS.find(r => r.id === parseInt(id));
-          if (restaurant) {
-            restaurant.disponivel = disponivel;
-            console.log(`RestaurantService: Status do restaurante ${id} atualizado para:`, disponivel);
-          }
-          resolve(restaurant);
-        }, 300);
-      });
+      const response = await apiClient.get(`/restaurantes/${restaurantId}/produtos`);
+      
+      // Normalizar produtos
+      const normalizedProducts = response.data.map(product => ({
+        ...product,
+        id: product.produto_id || product.id,
+        produto_id: product.produto_id || product.id,
+        valor: typeof product.valor === 'string' ? parseFloat(product.valor) : product.valor,
+        disponivel: product.disponivel !== undefined ? product.disponivel : true
+      }));
+      
+      console.log(`✅ ${normalizedProducts.length} produtos encontrados`);
+      return normalizedProducts;
     } catch (error) {
-      console.error('Erro ao atualizar status do restaurante:', error);
-      return null;
+      console.log(`📦 Erro ao buscar produtos do restaurante ${restaurantId}:`, error.message);
+      return [];
     }
   }
 
-  // Atualizar informações do restaurante
-  static async updateRestaurant(id, restaurantData) {
+  // Atualizar status do restaurante
+  static async updateRestaurantStatus(id, disponivel) {
     try {
-      // Quando conectar com API:
-      // const response = await fetch(`${API_BASE_URL}/restaurants/${id}`, {
-      //   method: 'PUT',
-      //   headers: { 
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${token}` // Se necessário
-      //   },
-      //   body: JSON.stringify(restaurantData)
-      // });
-      // if (!response.ok) {
-      //   throw new Error(`HTTP error! status: ${response.status}`);
-      // }
-      // return await response.json();
+      console.log(`🔄 Atualizando status do restaurante ${id} para ${disponivel}...`);
       
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const restaurantIndex = MOCK_RESTAURANTS.findIndex(r => r.id === parseInt(id));
-          if (restaurantIndex !== -1) {
-            MOCK_RESTAURANTS[restaurantIndex] = { ...MOCK_RESTAURANTS[restaurantIndex], ...restaurantData };
-            console.log(`RestaurantService: Restaurante ${id} atualizado:`, MOCK_RESTAURANTS[restaurantIndex]);
-            resolve(MOCK_RESTAURANTS[restaurantIndex]);
-          } else {
-            resolve(null);
-          }
-        }, 500);
+      const response = await apiClient.put(`/restaurantes/${id}/disponivel`, null, {
+        params: { disponivel }
       });
+      
+      const normalizedData = this.normalizeRestaurantData(response.data);
+      console.log(`✅ Status do restaurante ${id} atualizado`);
+      return normalizedData;
     } catch (error) {
-      console.error('Erro ao atualizar restaurante:', error);
+      console.log(`📦 Erro ao atualizar status do restaurante ${id}:`, error.message);
+      
+      // Fallback para mock
+      const restaurant = MOCK_RESTAURANTS.find(r => r.restaurante_id === parseInt(id));
+      if (restaurant) {
+        restaurant.disponivel = disponivel;
+        return this.normalizeRestaurantData(restaurant);
+      }
       return null;
     }
   }
@@ -365,24 +197,19 @@ class RestaurantService {
   // Adicionar produto ao restaurante
   static async addProduct(restaurantId, productData) {
     try {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const restaurant = MOCK_RESTAURANTS.find(r => r.id === parseInt(restaurantId));
-          if (restaurant) {
-            const newProduct = {
-              ...productData,
-              id: Date.now() // ID temporário
-            };
-            restaurant.produtos.push(newProduct);
-            console.log(`RestaurantService: Produto adicionado ao restaurante ${restaurantId}:`, newProduct);
-            resolve(newProduct);
-          } else {
-            resolve(null);
-          }
-        }, 400);
-      });
+      console.log(`🔄 Adicionando produto ao restaurante ${restaurantId}:`, productData);
+      
+      const response = await apiClient.post(`/restaurantes/${restaurantId}/produto`, productData);
+      
+      console.log(`✅ Produto adicionado ao restaurante ${restaurantId}`);
+      return response.data;
     } catch (error) {
-      console.error('Erro ao adicionar produto:', error);
+      console.error(`❌ Erro ao adicionar produto ao restaurante ${restaurantId}:`, error.message);
+      
+      if (error.response) {
+        console.error('📡 Detalhes do erro:', error.response.data);
+      }
+      
       return null;
     }
   }
@@ -390,22 +217,41 @@ class RestaurantService {
   // Atualizar produto
   static async updateProduct(restaurantId, productId, productData) {
     try {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const restaurant = MOCK_RESTAURANTS.find(r => r.id === parseInt(restaurantId));
-          if (restaurant) {
-            const productIndex = restaurant.produtos.findIndex(p => p.id === parseInt(productId));
-            if (productIndex !== -1) {
-              restaurant.produtos[productIndex] = { ...restaurant.produtos[productIndex], ...productData };
-              console.log(`RestaurantService: Produto ${productId} atualizado:`, restaurant.produtos[productIndex]);
-              resolve(restaurant.produtos[productIndex]);
-            }
-          }
-          resolve(null);
-        }, 400);
-      });
+      console.log(`🔄 Atualizando produto ${productId} do restaurante ${restaurantId}:`, productData);
+      
+      const response = await apiClient.put(`/restaurantes/${restaurantId}/produto/${productId}`, productData);
+      
+      console.log(`✅ Produto ${productId} atualizado`);
+      return response.data;
     } catch (error) {
-      console.error('Erro ao atualizar produto:', error);
+      console.error(`❌ Erro ao atualizar produto ${productId}:`, error.message);
+      
+      if (error.response) {
+        console.error('📡 Detalhes do erro:', error.response.data);
+      }
+      
+      return null;
+    }
+  }
+
+  // Atualizar disponibilidade do produto
+  static async updateProductAvailability(restaurantId, productId, disponivel) {
+    try {
+      console.log(`🔄 Atualizando disponibilidade do produto ${productId} para ${disponivel}...`);
+      
+      const response = await apiClient.put(`/restaurantes/${restaurantId}/produto/${productId}/disponivel`, null, {
+        params: { disponivel }
+      });
+      
+      console.log(`✅ Disponibilidade do produto ${productId} atualizada`);
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Erro ao atualizar disponibilidade do produto ${productId}:`, error.message);
+      
+      if (error.response) {
+        console.error('📡 Detalhes do erro:', error.response.data);
+      }
+      
       return null;
     }
   }
@@ -413,40 +259,73 @@ class RestaurantService {
   // Remover produto
   static async deleteProduct(restaurantId, productId) {
     try {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const restaurant = MOCK_RESTAURANTS.find(r => r.id === parseInt(restaurantId));
-          if (restaurant) {
-            const productIndex = restaurant.produtos.findIndex(p => p.id === parseInt(productId));
-            if (productIndex !== -1) {
-              restaurant.produtos.splice(productIndex, 1);
-              console.log(`RestaurantService: Produto ${productId} removido do restaurante ${restaurantId}`);
-              resolve(true);
-            }
-          }
-          resolve(false);
-        }, 300);
-      });
+      console.log(`🔄 Removendo produto ${productId} do restaurante ${restaurantId}...`);
+      
+      await apiClient.delete(`/restaurante/${restaurantId}/produto/${productId}`);
+      
+      console.log(`✅ Produto ${productId} removido com sucesso`);
+      return true;
     } catch (error) {
-      console.error('Erro ao remover produto:', error);
+      console.error(`❌ Erro ao remover produto ${productId}:`, error.message);
+      
+      if (error.response) {
+        console.error('📡 Detalhes do erro:', error.response.data);
+      }
+      
       return false;
     }
   }
 
-  // Buscar produtos de um restaurante
-  static async getProductsByRestaurant(restaurantId) {
+  // Buscar saldo do restaurante
+  static async getRestaurantBalance(restaurantId) {
     try {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const restaurant = MOCK_RESTAURANTS.find(r => r.id === parseInt(restaurantId));
-          const products = restaurant ? restaurant.produtos : [];
-          console.log(`RestaurantService: Produtos do restaurante ${restaurantId}:`, products);
-          resolve(products);
-        }, 200);
-      });
+      console.log(`🔄 Buscando saldo do restaurante ${restaurantId}...`);
+      
+      const response = await apiClient.get(`/restaurantes/${restaurantId}/saldo`);
+      
+      console.log(`✅ Saldo do restaurante ${restaurantId}:`, response.data);
+      return response.data;
     } catch (error) {
-      console.error('Erro ao buscar produtos do restaurante:', error);
-      return [];
+      console.error(`❌ Erro ao buscar saldo do restaurante ${restaurantId}:`, error.message);
+      return null;
+    }
+  }
+
+  // Atualizar saldo do restaurante
+  static async updateRestaurantBalance(restaurantId, saldo) {
+    try {
+      console.log(`🔄 Atualizando saldo do restaurante ${restaurantId} para ${saldo}...`);
+      
+      const response = await apiClient.put(`/restaurante/${restaurantId}/saldo`, null, {
+        params: { saldo }
+      });
+      
+      console.log(`✅ Saldo do restaurante ${restaurantId} atualizado`);
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Erro ao atualizar saldo do restaurante ${restaurantId}:`, error.message);
+      
+      if (error.response) {
+        console.error('📡 Detalhes do erro:', error.response.data);
+      }
+      
+      return null;
+    }
+  }
+
+  // Método utilitário para configurar URL da API dinamicamente
+  static setApiUrl(url) {
+    apiClient.defaults.baseURL = url;
+    console.log(`🔧 URL da API alterada para: ${url}`);
+  }
+
+  // Método para verificar status da API
+  static async checkApiStatus() {
+    try {
+      const response = await apiClient.get('/');
+      return { online: true, data: response.data };
+    } catch (error) {
+      return { online: false, error: error.message };
     }
   }
 }
