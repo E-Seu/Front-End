@@ -50,6 +50,7 @@ export default function Routes() {
           <Stack.Screen name="ClienteFavoritos" component={ClienteFavoritos} />
         </>
       )}
+
     </Stack.Navigator>
   );
 }

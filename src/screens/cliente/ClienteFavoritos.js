@@ -44,7 +44,10 @@ const ClienteFavoritos = ({ navigation, route }) => {
 
   const handleRestaurantPress = (restaurant) => {
     console.log('Restaurante pressionado:', restaurant.nome);
+    // Navegar para a tela de detalhes do restaurante
+    navigation.navigate('RestauranteDetalhes', { restaurant });
   };
+
 
   const renderRestaurantItem = ({ item }) => (
     <RestaurantItem
@@ -59,7 +62,7 @@ const ClienteFavoritos = ({ navigation, route }) => {
 
   const EmptyComponent = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>Nenhum restaurante favoritado ainda</Text>
+      <Text style={styles.emptyText}>Nenhum restaurante favoritado</Text>
       <Text style={styles.emptySubtext}>Favorite alguns restaurantes para vê-los aqui!</Text>
     </View>
   );
