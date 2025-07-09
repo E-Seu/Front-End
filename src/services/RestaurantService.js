@@ -4,14 +4,17 @@ const API_BASE_URL = 'http://localhost:3000/api'; // Substitua pela URL da sua A
 const MOCK_RESTAURANTS = [
   {
     id: 1,
-    nome: "Comida Paizão - Feito com amor",
-    info: "Comida caseira",
-    local: "PPGCC",
+    nome: "Comida Paixão - Feito com amor",
+    telefone: "(85) 99999-1234",
+    tipo_restaurante: "Comida Caseira",
+    localizacao: "PPGCC",
+    avaliacao: 5.0,
+    info: "Restaurante especializado em comida caseira, feita com muito amor e carinho. Oferecemos pratos tradicionais com ingredientes frescos e selecionados.",
     email: "restaurante@email.com", // Email do usuário cadastrado
-    horarioAbertura: "07:00",
-    horarioFechamento: "18:00",
-    numeroEstrelas: 5,
-    isAberto: true,
+    horario_abertura: "07:00",
+    horario_fechamento: "18:00",
+    disponivel: true,
+    saldo: 1250.75,
     produtos: [
       {
         id: 1,
@@ -74,13 +77,16 @@ const MOCK_RESTAURANTS = [
   {
     id: 2,
     nome: "Sabor & Arte",
-    info: "Culinária contemporânea",
-    local: "Centro Acadêmico",
+    telefone: "(85) 98888-5678",
+    tipo_restaurante: "Culinária Contemporânea",
+    localizacao: "Centro Acadêmico",
+    avaliacao: 4.5,
+    info: "Restaurante moderno com foco em culinária contemporânea. Combinamos técnicas tradicionais com toques inovadores para criar experiências gastronômicas únicas.",
     email: "sabor@email.com",
-    horarioAbertura: "08:00",
-    horarioFechamento: "20:00",
-    numeroEstrelas: 4.5,
-    isAberto: true,
+    horario_abertura: "08:00",
+    horario_fechamento: "20:00",
+    disponivel: true,
+    saldo: 890.30,
     produtos: [
       {
         id: 9,
@@ -95,33 +101,124 @@ const MOCK_RESTAURANTS = [
         descricao: "Salmão grelhado com legumes e molho de mostarda",
         valor: 42.00,
         restricoes: ['glutenFree']
+      },
+      {
+        id: 11,
+        nome: "Pasta Carbonara Premium",
+        descricao: "Massa fresca com molho carbonara artesanal, bacon defumado e parmesão",
+        valor: 28.00,
+        restricoes: []
       }
     ]
   },
   {
     id: 3,
     nome: "Verde & Natural",
-    info: "Comida saudável",
-    local: "Biblioteca",
+    telefone: "(85) 97777-9012",
+    tipo_restaurante: "Comida Saudável",
+    localizacao: "Biblioteca Central",
+    avaliacao: 4.8,
+    info: "Especializado em alimentação saudável e sustentável. Oferecemos opções veganas, vegetarianas e funcionais para quem busca bem-estar e sabor.",
     email: "verde@email.com",
-    horarioAbertura: "06:00",
-    horarioFechamento: "16:00",
-    numeroEstrelas: 4.8,
-    isAberto: false,
+    horario_abertura: "06:00",
+    horario_fechamento: "16:00",
+    disponivel: false,
+    saldo: 567.20,
     produtos: [
       {
-        id: 11,
+        id: 12,
         nome: "Bowl Verde",
         descricao: "Bowl com quinoa, abacate, brócolis e molho tahine",
         valor: 19.90,
         restricoes: ['vegan', 'glutenFree', 'lactoseFree']
       },
       {
-        id: 12,
+        id: 13,
         nome: "Smoothie Detox",
         descricao: "Smoothie de frutas vermelhas com spirulina",
         valor: 14.50,
         restricoes: ['vegan', 'glutenFree', 'lactoseFree']
+      },
+      {
+        id: 14,
+        nome: "Salada Buddha Bowl",
+        descricao: "Mix de vegetais coloridos, grãos, sementes e molho de tahine",
+        valor: 22.90,
+        restricoes: ['vegan', 'glutenFree', 'lactoseFree']
+      }
+    ]
+  },
+  {
+    id: 4,
+    nome: "Pizzaria Bella Napoli",
+    telefone: "(85) 96666-3456",
+    tipo_restaurante: "Pizzaria",
+    localizacao: "Praça de Alimentação",
+    avaliacao: 4.3,
+    info: "Pizzaria tradicional italiana com receitas familiares passadas de geração em geração. Massa artesanal e ingredientes importados da Itália.",
+    email: "bella@email.com",
+    horario_abertura: "11:00",
+    horario_fechamento: "23:00",
+    disponivel: true,
+    saldo: 2150.40,
+    produtos: [
+      {
+        id: 15,
+        nome: "Pizza Margherita",
+        descricao: "Pizza clássica com molho de tomate, mozzarella e manjericão fresco",
+        valor: 35.00,
+        restricoes: []
+      },
+      {
+        id: 16,
+        nome: "Pizza Quattro Stagioni",
+        descricao: "Pizza dividida em quatro sabores: cogumelos, presunto, alcachofra e azeitonas",
+        valor: 42.00,
+        restricoes: []
+      },
+      {
+        id: 17,
+        nome: "Calzone Tradicional",
+        descricao: "Calzone recheado com ricota, mozzarella e molho de tomate",
+        valor: 28.50,
+        restricoes: []
+      }
+    ]
+  },
+  {
+    id: 5,
+    nome: "Burguer Station",
+    telefone: "(85) 95555-7890",
+    tipo_restaurante: "Hamburgueria",
+    localizacao: "Cantina Universitária",
+    avaliacao: 4.6,
+    info: "Hamburgueria gourmet com carnes premium e pães artesanais. Oferecemos opções para todos os gostos, incluindo veganas e vegetarianas.",
+    email: "burger@email.com",
+    horario_abertura: "10:00",
+    horario_fechamento: "22:00",
+    disponivel: true,
+    saldo: 1876.90,
+    produtos: [
+      {
+        id: 18,
+        nome: "Classic Burger",
+        descricao: "Hambúrguer clássico com carne 150g, queijo, alface, tomate e molho especial",
+        valor: 25.90,
+        restricoes: []
+      },
+      {
+        id: 19,
+        nome: "Veggie Burger",
+        descricao: "Hambúrguer vegano com proteína de soja, queijo vegano e vegetais frescos",
+        valor: 23.90,
+        restricoes: ['vegan', 'lactoseFree']
+      },
+      {
+        id: 20,
+        nome: "Double Bacon",
+        descricao: "Dois hambúrgueres, bacon crocante, queijo cheddar e molho barbecue",
+        valor: 32.90,
+        restricoes: []
       }
     ]
   }
@@ -198,7 +295,7 @@ class RestaurantService {
   }
 
   // Atualizar status do restaurante (aberto/fechado)
-  static async updateRestaurantStatus(id, isAberto) {
+  static async updateRestaurantStatus(id, disponivel) {
     try {
       // Quando conectar com API:
       // const response = await fetch(`${API_BASE_URL}/restaurants/${id}/status`, {
@@ -207,7 +304,7 @@ class RestaurantService {
       //     'Content-Type': 'application/json',
       //     'Authorization': `Bearer ${token}` // Se necessário
       //   },
-      //   body: JSON.stringify({ isAberto })
+      //   body: JSON.stringify({ disponivel })
       // });
       // if (!response.ok) {
       //   throw new Error(`HTTP error! status: ${response.status}`);
@@ -218,8 +315,8 @@ class RestaurantService {
         setTimeout(() => {
           const restaurant = MOCK_RESTAURANTS.find(r => r.id === parseInt(id));
           if (restaurant) {
-            restaurant.isAberto = isAberto;
-            console.log(`RestaurantService: Status do restaurante ${id} atualizado para:`, isAberto);
+            restaurant.disponivel = disponivel;
+            console.log(`RestaurantService: Status do restaurante ${id} atualizado para:`, disponivel);
           }
           resolve(restaurant);
         }, 300);
