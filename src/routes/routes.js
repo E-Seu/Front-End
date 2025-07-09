@@ -7,6 +7,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import AppLayout from '../components/AppLayout';
 import ClienteFavoritos from '../screens/cliente/ClienteFavoritos';
+import ClienteRestauranteDetalhes from '../screens/cliente/ClienteRestauranteDetalhes';
 
 const Stack = createNativeStackNavigator();
 
@@ -40,6 +41,7 @@ export default function Routes() {
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
           <Stack.Screen name="Splash" component={SplashScreen} />
+
         </>
       ) : (
         // Rotas privadas (autenticado)
@@ -48,6 +50,7 @@ export default function Routes() {
             {() => <AppLayout userType={userType} />}
           </Stack.Screen>
           <Stack.Screen name="ClienteFavoritos" component={ClienteFavoritos} />
+          <Stack.Screen name="RestauranteDetalhes" component={ClienteRestauranteDetalhes} />
         </>
       )}
 
