@@ -6,6 +6,7 @@ import EstrelaIcon from '../../assets/icons/estrelaIcon';
 import CarrinhoIcon from '../../assets/icons/carrinhoIcon';
 import ProductItem from '../../components/ProductItem';
 import CartModal from '../../components/CartModal';
+import FilterModal from '../../components/FilterModal';
 import RestaurantService from '../../services/RestaurantService';
 
 // Imagens genéricas para restaurantes (mesmo array do RestaurantItem)
@@ -25,6 +26,11 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [carrinho, setCarrinho] = useState({});
   const [showCartModal, setShowCartModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState({
+    maxPrice: null,
+    restrictions: []
+  });
 
   // Carregar produtos do restaurante
   useEffect(() => {
@@ -61,6 +67,50 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
     setRefreshing(false);
   };
 
+  // Função para aplicar filtros
+  const applyFilters = (products, filters) => {
+    if (!products || products.length === 0) {
+      return [];
+    }
+
+    return products.filter(product => {
+      // Filtro por preço máximo
+      if (filters.maxPrice !== null && filters.maxPrice !== undefined) {
+        const productPrice = parseFloat(product.valor);
+        if (productPrice > filters.maxPrice) {
+          return false;
+        }
+      }
+
+      // Filtro por restrições (excluir produtos que têm as restrições marcadas)
+      if (filters.restrictions && filters.restrictions.length > 0) {
+        const productRestrictions = product.restricoes || [];
+        
+        // Se o produto tem alguma das restrições marcadas, excluir
+        const hasRestrictedIngredients = filters.restrictions.some(restrictionFilter => 
+          productRestrictions.includes(restrictionFilter)
+        );
+        
+        if (hasRestrictedIngredients) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  };
+
+  // Produtos filtrados usando useMemo para otimização
+  const filteredProducts = useMemo(() => {
+    console.log('🔍 Aplicando filtros:', appliedFilters);
+    console.log('📦 Produtos originais:', produtos.length);
+    
+    const filtered = applyFilters(produtos, appliedFilters);
+    
+    console.log('✅ Produtos filtrados:', filtered.length);
+    return filtered;
+  }, [produtos, appliedFilters]);
+
   // Função para gerar um hash simples baseado no nome (mesma do RestaurantItem)
   const generateHash = (str) => {
     if (!str || typeof str !== 'string') {
@@ -87,10 +137,10 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   const restaurantDetails = {
     nome: restaurant?.nome || "Nome do Restaurante",
     info: restaurant?.info || "Informações do restaurante",
-    local: restaurant?.local || restaurant?.localizacao || "Local do restaurante", // Suporte para ambos os nomes
+    local: restaurant?.local || restaurant?.localizacao || "Local do restaurante",
     horarioAbertura: restaurant?.horario_abertura || "08:00",
     horarioFechamento: restaurant?.horario_fechamento || "22:00",
-    numeroEstrelas: restaurant?.numero_estrelas || restaurant?.avaliacao || 4.5, // Suporte para ambos os nomes
+    numeroEstrelas: restaurant?.numero_estrelas || restaurant?.avaliacao || 4.5,
     isAberto: restaurant?.disponivel !== undefined ? restaurant.disponivel : true,
     telefone: restaurant?.telefone || "",
     tipo_restaurante: restaurant?.tipo_restaurante || "",
@@ -103,6 +153,12 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
 
   const handleOpcoesPress = () => {
     console.log('Opções do restaurante pressionado');
+    setShowFilterModal(true);
+  };
+
+  const handleApplyFilters = (filters) => {
+    console.log('🔧 Filtros aplicados:', filters);
+    setAppliedFilters(filters);
   };
 
   const handleQuantityChange = (productId, quantidade) => {
@@ -182,7 +238,7 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
       valor={item.valor}
       restricoes={item.restricoes || []}
       disponivel={item.disponivel}
-      tempo_preparo={item.tempo_preparo} // Campo adicional da API
+      tempo_preparo={item.tempo_preparo}
       onQuantityChange={(quantidade) => handleQuantityChange(item.id || item.produto_id, quantidade)}
     />
   );
@@ -237,6 +293,22 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
           </View>
         </ImageBackground>
       </View>
+      
+      {/* Indicador de filtros ativos */}
+      {(appliedFilters.maxPrice || (appliedFilters.restrictions && appliedFilters.restrictions.length > 0)) && (
+        <View style={styles.filterIndicatorContainer}>
+          <Text style={styles.filterIndicatorText}>
+            Filtros aplicados: {filteredProducts.length} de {produtos.length} produtos
+          </Text>
+          <TouchableOpacity 
+            style={styles.clearFiltersButton}
+            onPress={() => setAppliedFilters({ maxPrice: null, restrictions: [] })}
+          >
+            <Text style={styles.clearFiltersText}>Limpar filtros</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
       <View style={styles.sectionTitle}>
       </View>
     </View>
@@ -251,16 +323,32 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   );
 
   // Componente para lista vazia
-  const EmptyComponent = () => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>
-        {restaurantDetails.isAberto 
-          ? "Este restaurante ainda não possui produtos cadastrados."
-          : "Este restaurante está indisponível no momento."
-        }
-      </Text>
-    </View>
-  );
+  const EmptyComponent = () => {
+    // Verificar se é por causa dos filtros ou se realmente não há produtos
+    const isFilteredEmpty = produtos.length > 0 && filteredProducts.length === 0;
+    
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>
+          {isFilteredEmpty 
+            ? "Nenhum produto encontrado com os filtros aplicados."
+            : restaurantDetails.isAberto 
+              ? "Este restaurante ainda não possui produtos cadastrados."
+              : "Este restaurante está indisponível no momento."
+          }
+        </Text>
+        
+        {isFilteredEmpty && (
+          <TouchableOpacity 
+            style={styles.clearFiltersButtonEmpty}
+            onPress={() => setAppliedFilters({ maxPrice: null, restrictions: [] })}
+          >
+            <Text style={styles.clearFiltersTextEmpty}>Limpar filtros</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
 
   // Componente do botão de carrinho flutuante
   const FloatingCartButton = () => (
@@ -334,7 +422,7 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
-        data={produtos}
+        data={filteredProducts} // Usar produtos filtrados em vez de produtos originais
         renderItem={renderProductItem}
         keyExtractor={(item) => (item.id || item.produto_id).toString()}
         ListHeaderComponent={ListHeader}
@@ -356,7 +444,14 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
         onClose={() => setShowCartModal(false)}
         restaurantName={restaurantDetails.nome}
         cartItems={carrinho}
-        produtos={produtos}
+        produtos={produtos} // Usar produtos originais no carrinho
+      />
+      
+      {/* Modal de Filtros */}
+      <FilterModal
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onApplyFilters={handleApplyFilters}
       />
     </SafeAreaView>
   );
@@ -444,35 +539,49 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 
-  tipoText: {
-    fontSize: 12,
-    fontFamily: 'Nunito-Medium',
-    textAlign: 'center',
-  },
-
-  telefoneText: {
-    fontSize: 12,
-    fontFamily: 'Nunito-Regular',
-    textAlign: 'center',
-  },
-
   statusText: {
     fontSize: 16,
     fontFamily: 'Nunito-Medium',
     textAlign: 'center',
   },
 
+  // Estilos para indicador de filtros
+  filterIndicatorContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8F8F8',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    marginTop: 70,
+    marginBottom: -70,
+  },
+
+  filterIndicatorText: {
+    fontSize: 14,
+    fontFamily: 'Nunito-Regular',
+    color: '#666666',
+  },
+
+  clearFiltersButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: '#D9C0E7',
+    borderRadius: 12,
+  },
+
+  clearFiltersText: {
+    fontSize: 12,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#4E0777',
+  },
+
   sectionTitle: {
     marginTop: 70,
     marginBottom: 5,
     paddingHorizontal: 20,
-  },
-
-  sectionTitleText: {
-    fontSize: 16,
-    fontFamily: 'Nunito-SemiBold',
-    color: '#222222',
-    textAlign: 'center',
   },
 
   separator: {
@@ -507,6 +616,20 @@ const styles = StyleSheet.create({
     color: '#F03800',
     textAlign: 'center',
     marginBottom: 10,
+  },
+
+  clearFiltersButtonEmpty: {
+    marginTop: 15,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#D9C0E7',
+    borderRadius: 20,
+  },
+
+  clearFiltersTextEmpty: {
+    fontSize: 14,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#4E0777',
   },
 
   // Estilos para o botão de carrinho flutuante
@@ -563,7 +686,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: -1, height: 1 },
     textShadowRadius: 2,
   },
-
 });
 
 export default ClienteRestauranteDetalhes;
