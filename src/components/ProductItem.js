@@ -7,22 +7,25 @@ const ProductItem = ({
   nome = "Nome do Produto",
   descricao = "Descrição do produto",
   valor = 0,
-  restricoes = [], // Array com as restrições: ['vegan', 'glutenFree', 'peanutFree', 'lactoseFree']
+  disponivel = true, // Se o produto está disponível
+  selos = {}, // Objeto com os selos: { sem_lactose: false, sem_gluten: true, sem_amendoim: true, vegano: false }
   onQuantityChange
 }) => {
   const [quantidade, setQuantidade] = useState(0);
   const [maisPressionado, setMaisPressionado] = useState(false);
   const [menosPressionado, setMenosPressionado] = useState(false);
 
-  // Mapeamento das imagens de restrições
-  const restricaoImages = {
-    vegan: require('../assets/Vegan.png'),
-    glutenFree: require('../assets/GlutenFree.png'),
-    peanutFree: require('../assets/PeanutFree.png'),
-    lactoseFree: require('../assets/LactoseFree.png'),
+  // Mapeamento das imagens de selos (baseado na estrutura da API)
+  const selosImages = {
+    sem_lactose: require('../assets/LactoseFree.png'),
+    sem_gluten: require('../assets/GlutenFree.png'),
+    sem_amendoim: require('../assets/PeanutFree.png'),
+    vegano: require('../assets/Vegan.png'),
   };
 
   const handleMais = () => {
+    if (!disponivel) return; // Não permite adicionar se não estiver disponível
+    
     const novaQuantidade = quantidade + 1;
     setQuantidade(novaQuantidade);
     if (onQuantityChange) {
@@ -41,41 +44,82 @@ const ProductItem = ({
   };
 
   const formatarValor = (valor) => {
-    return `R$ ${valor.toFixed(2).replace('.', ',')}`;
+    // Converter string para number se necessário
+    const valorNumerico = typeof valor === 'string' ? parseFloat(valor) : valor;
+    return `R$ ${valorNumerico.toFixed(2).replace('.', ',')}`;
   };
 
   // Determinar se os ícones devem estar na versão colorida
   const shouldShowColoredIcons = quantidade > 0;
 
+  // Função para obter selos ativos
+  const getSelosAtivos = () => {    
+    if (!selos || typeof selos !== 'object') {
+      console.log('Selos inválidos ou vazios');
+      return [];
+    }
+    
+    const selosAtivos = Object.entries(selos)
+      .filter(([key, value]) => {
+        // Filtrar apenas os selos válidos (não incluir produto_id)
+        const isValidSelo = ['sem_lactose', 'sem_gluten', 'sem_amendoim', 'vegano'].includes(key);
+        
+        // Verificar se o selo está ativo (true)
+        const isActive = value === true;
+        
+        console.log(`Selo ${key}: ${value} (tipo: ${typeof value}) - Válido: ${isValidSelo}, Ativo: ${isActive}`);
+        return isValidSelo && isActive;
+      })
+      .map(([key, _]) => key);
+    
+    console.log('Selos ativos encontrados:', selosAtivos);
+    return selosAtivos;
+  };
+
+  // Obter lista de selos para exibir
+  const selosParaExibir = getSelosAtivos();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, !disponivel && styles.containerIndisponivel]}>
       {/* Conteúdo principal */}
       <View style={styles.mainContent}>
         {/* Lado esquerdo - Informações do produto */}
         <View style={styles.infoContainer}>
-          <Text style={styles.nome} numberOfLines={2}>
+          <Text style={[styles.nome, !disponivel && styles.textoIndisponivel]} numberOfLines={2}>
             {nome}
           </Text>
-          <Text style={styles.descricao} numberOfLines={3}>
+          <Text style={[styles.descricao, !disponivel && styles.textoIndisponivel]} numberOfLines={3}>
             {descricao}
           </Text>
-          <Text style={styles.valor}>
+          
+          <Text style={[styles.valor, !disponivel && styles.textoIndisponivel]}>
             {formatarValor(valor)}
           </Text>
+
+          {/* Status de disponibilidade */}
+          {!disponivel && (
+            <Text style={styles.statusIndisponivel}>
+              Temporariamente indisponível
+            </Text>
+          )}
         </View>
 
-        {/* Lado direito - Restrições e controles */}
+        {/* Lado direito - Selos e controles */}
         <View style={styles.rightContainer}>
-          {/* Restrições alimentares */}
-          {restricoes.length > 0 && (
-            <View style={styles.restricoesContainer}>
-              {restricoes.map((restricao, index) => (
-                <Image
-                  key={index}
-                  source={restricaoImages[restricao]}
-                  style={styles.restricaoIcon}
-                />
-              ))}
+          {/* Selos alimentares */}
+          {selosParaExibir.length > 0 && (
+            <View style={styles.selosContainer}>
+              {selosParaExibir.map((selo, index) => {
+                const imagemSelo = selosImages[selo];
+                                
+                return imagemSelo ? (
+                  <Image
+                    key={`${selo}-${index}`}
+                    source={imagemSelo}
+                    style={[styles.seloIcon, !disponivel && styles.seloIndisponivel]}
+                  />
+                ) : null;
+              })}
             </View>
           )}
 
@@ -85,17 +129,20 @@ const ProductItem = ({
               onPressIn={() => setMenosPressionado(true)}
               onPressOut={() => setMenosPressionado(false)}
               onPress={handleMenos}
-              style={[styles.quantityButton, quantidade === 0 && styles.disabledButton]}
-              disabled={quantidade === 0}
+              style={[
+                styles.quantityButton, 
+                (quantidade === 0 || !disponivel) && styles.disabledButton
+              ]}
+              disabled={quantidade === 0 || !disponivel}
             >
               <MenosIcon 
-                isPressed={shouldShowColoredIcons || (menosPressionado && quantidade > 0)} 
+                isPressed={shouldShowColoredIcons && disponivel && (menosPressionado && quantidade > 0)} 
                 width={24} 
                 height={24} 
               />
             </TouchableOpacity>
 
-            <Text style={styles.quantityText}>
+            <Text style={[styles.quantityText, !disponivel && styles.textoIndisponivel]}>
               {quantidade}
             </Text>
 
@@ -103,10 +150,11 @@ const ProductItem = ({
               onPressIn={() => setMaisPressionado(true)}
               onPressOut={() => setMaisPressionado(false)}
               onPress={handleMais}
-              style={styles.quantityButton}
+              style={[styles.quantityButton, !disponivel && styles.disabledButton]}
+              disabled={!disponivel}
             >
               <MaisIcon 
-                isPressed={shouldShowColoredIcons || maisPressionado} 
+                isPressed={shouldShowColoredIcons && disponivel && maisPressionado} 
                 width={24} 
                 height={24} 
               />
@@ -135,6 +183,12 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+  },
+
+  containerIndisponivel: {
+    backgroundColor: '#F8F8F8',
+    borderColor: '#CCCCCC',
+    opacity: 0.7,
   },
 
   mainContent: {
@@ -173,6 +227,18 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 
+  statusIndisponivel: {
+    fontSize: 12,
+    fontFamily: 'Nunito-Medium',
+    color: '#FF6B6B',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+
+  textoIndisponivel: {
+    color: '#999999',
+  },
+
   rightContainer: {
     justifyContent: 'space-between', 
     alignItems: 'flex-end',
@@ -180,7 +246,7 @@ const styles = StyleSheet.create({
     width: 100, 
   },
 
-  restricoesContainer: {
+  selosContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
@@ -189,11 +255,15 @@ const styles = StyleSheet.create({
     maxWidth: 100, 
   },
 
-  restricaoIcon: {
+  seloIcon: {
     width: 22, 
     height: 22,
     marginLeft: 2,
     marginBottom: 2,
+  },
+
+  seloIndisponivel: {
+    opacity: 0.5,
   },
 
   quantityContainer: {

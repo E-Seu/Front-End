@@ -3,7 +3,10 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ImageBackground
 import RetornarIcon from '../../assets/icons/retornarIcon';
 import OpcoesIcon from '../../assets/icons/opcoesIcon';
 import EstrelaIcon from '../../assets/icons/estrelaIcon';
+import CarrinhoIcon from '../../assets/icons/carrinhoIcon';
 import ProductItem from '../../components/ProductItem';
+import CartModal from '../../components/CartModal';
+import FilterModal from '../../components/FilterModal';
 import RestaurantService from '../../services/RestaurantService';
 
 // Imagens genéricas para restaurantes (mesmo array do RestaurantItem)
@@ -21,6 +24,13 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [carrinho, setCarrinho] = useState({});
+  const [showCartModal, setShowCartModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState({
+    maxPrice: null,
+    restrictions: []
+  });
 
   // Carregar produtos do restaurante
   useEffect(() => {
@@ -30,20 +40,18 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   const loadRestaurantProducts = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Carregando produtos do restaurante:', restaurant?.restaurante_id || restaurant?.id);
+      console.log('Carregando produtos do restaurante:', restaurant?.restaurante_id || restaurant?.id);
       
       if (restaurant) {
         const restaurantId = restaurant.restaurante_id || restaurant.id;
         const productsList = await RestaurantService.getProductsByRestaurant(restaurantId);
-        
-        console.log('📦 Produtos carregados:', productsList);
         setProdutos(productsList || []);
       } else {
-        console.log('❌ Nenhum restaurante foi passado como parâmetro');
+        console.log('Nenhum restaurante foi passado como parâmetro');
         setProdutos([]);
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar produtos:', error);
+      console.error('Erro ao carregar produtos:', error);
       setProdutos([]);
     } finally {
       setLoading(false);
@@ -56,6 +64,63 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
     await loadRestaurantProducts();
     setRefreshing(false);
   };
+
+  // Função para aplicar filtros
+  const applyFilters = (products, filters) => {
+    if (!products || products.length === 0) {
+      return [];
+    }
+
+    return products.filter(product => {
+      // Filtro por preço máximo
+      if (filters.maxPrice !== null && filters.maxPrice !== undefined) {
+        const productPrice = parseFloat(product.valor);
+        if (productPrice > filters.maxPrice) {
+          return false;
+        }
+      }
+
+      // Filtro por restrições usando selos
+      if (filters.restrictions && filters.restrictions.length > 0) {
+        const productSelos = product.selos || {};
+        
+        // Verificar se o produto não atende às restrições desejadas
+        const failsRestrictions = filters.restrictions.some(restriction => {
+          // Mapear restrições para selos
+          const seloMapping = {
+            'Sem Lactose': 'sem_lactose',
+            'Sem Glúten': 'sem_gluten',
+            'Sem Amendoim': 'sem_amendoim',
+            'Vegano': 'vegano'
+          };
+          
+          const seloKey = seloMapping[restriction];
+          if (seloKey) {
+            // Se o usuário quer produtos sem lactose, mas o produto tem lactose (selo false)
+            return productSelos[seloKey] !== true;
+          }
+          return false;
+        });
+        
+        if (failsRestrictions) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  };
+
+  // Produtos filtrados usando useMemo para otimização
+  const filteredProducts = useMemo(() => {
+    console.log('Aplicando filtros:', appliedFilters);
+    console.log('Produtos originais:', produtos.length);
+    
+    const filtered = applyFilters(produtos, appliedFilters);
+    
+    console.log('Produtos filtrados:', filtered.length);
+    return filtered;
+  }, [produtos, appliedFilters]);
 
   // Função para gerar um hash simples baseado no nome (mesma do RestaurantItem)
   const generateHash = (str) => {
@@ -83,10 +148,10 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   const restaurantDetails = {
     nome: restaurant?.nome || "Nome do Restaurante",
     info: restaurant?.info || "Informações do restaurante",
-    local: restaurant?.local || restaurant?.localizacao || "Local do restaurante", // Suporte para ambos os nomes
+    local: restaurant?.local || restaurant?.localizacao || "Local do restaurante",
     horarioAbertura: restaurant?.horario_abertura || "08:00",
     horarioFechamento: restaurant?.horario_fechamento || "22:00",
-    numeroEstrelas: restaurant?.numero_estrelas || restaurant?.avaliacao || 4.5, // Suporte para ambos os nomes
+    numeroEstrelas: restaurant?.numero_estrelas || restaurant?.avaliacao || 4.5,
     isAberto: restaurant?.disponivel !== undefined ? restaurant.disponivel : true,
     telefone: restaurant?.telefone || "",
     tipo_restaurante: restaurant?.tipo_restaurante || "",
@@ -99,11 +164,44 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
 
   const handleOpcoesPress = () => {
     console.log('Opções do restaurante pressionado');
+    setShowFilterModal(true);
+  };
+
+  const handleApplyFilters = (filters) => {
+    console.log('Filtros aplicados:', filters);
+    setAppliedFilters(filters);
   };
 
   const handleQuantityChange = (productId, quantidade) => {
     console.log(`Produto ${productId}: quantidade ${quantidade}`);
-    // Aqui você pode implementar a lógica para gerenciar o carrinho
+    
+    // Atualizar o carrinho
+    setCarrinho(prevCarrinho => {
+      const newCarrinho = { ...prevCarrinho };
+      
+      if (quantidade > 0) {
+        newCarrinho[productId] = quantidade;
+      } else {
+        delete newCarrinho[productId];
+      }
+      
+      console.log('Carrinho atualizado:', newCarrinho);
+      return newCarrinho;
+    });
+  };
+
+  const handleCarrinhoPress = () => {
+    console.log('Botão do carrinho pressionado');
+    console.log('Itens no carrinho:', carrinho);
+    setShowCartModal(true);
+  };
+
+  const getTotalItemsInCart = () => {
+    return Object.values(carrinho).reduce((total, quantidade) => total + quantidade, 0);
+  };
+
+  const hasItemsInCart = () => {
+    return getTotalItemsInCart() > 0;
   };
 
   const getStatusText = () => {
@@ -144,17 +242,19 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   };
 
   // Renderizar cada item de produto com campos corretos da API
-  const renderProductItem = ({ item }) => (
-    <ProductItem
-      nome={item.nome}
-      descricao={item.descricao}
-      valor={item.valor}
-      restricoes={item.restricoes || []}
-      disponivel={item.disponivel}
-      tempo_preparo={item.tempo_preparo} // Campo adicional da API
-      onQuantityChange={(quantidade) => handleQuantityChange(item.id || item.produto_id, quantidade)}
-    />
-  );
+  const renderProductItem = ({ item }) => {    
+    return (
+      <ProductItem
+        nome={item.nome}
+        descricao={item.descricao}
+        valor={item.valor}
+        selos={item.selos} // CORRIGIDO: agora usa selos ao invés de restricoes
+        disponivel={item.disponivel}
+        tempo_preparo={item.tempo_preparo}
+        onQuantityChange={(quantidade) => handleQuantityChange(item.id || item.produto_id, quantidade)}
+      />
+    );
+  };
 
   // Header da lista de produtos
   const ListHeader = () => (
@@ -206,6 +306,22 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
           </View>
         </ImageBackground>
       </View>
+      
+      {/* Indicador de filtros ativos */}
+      {(appliedFilters.maxPrice || (appliedFilters.restrictions && appliedFilters.restrictions.length > 0)) && (
+        <View style={styles.filterIndicatorContainer}>
+          <Text style={styles.filterIndicatorText}>
+            Filtros aplicados: {filteredProducts.length} de {produtos.length} produtos
+          </Text>
+          <TouchableOpacity 
+            style={styles.clearFiltersButton}
+            onPress={() => setAppliedFilters({ maxPrice: null, restrictions: [] })}
+          >
+            <Text style={styles.clearFiltersText}>Limpar filtros</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
       <View style={styles.sectionTitle}>
       </View>
     </View>
@@ -220,14 +336,58 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   );
 
   // Componente para lista vazia
-  const EmptyComponent = () => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>
-        {restaurantDetails.isAberto 
-          ? "Este restaurante ainda não possui produtos cadastrados."
-          : "Este restaurante está indisponível no momento."
-        }
-      </Text>
+  const EmptyComponent = () => {
+    // Verificar se é por causa dos filtros ou se realmente não há produtos
+    const isFilteredEmpty = produtos.length > 0 && filteredProducts.length === 0;
+    
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>
+          {isFilteredEmpty 
+            ? "Nenhum produto encontrado com os filtros aplicados."
+            : restaurantDetails.isAberto 
+              ? "Este restaurante ainda não possui produtos cadastrados."
+              : "Este restaurante está indisponível no momento."
+          }
+        </Text>
+        
+        {isFilteredEmpty && (
+          <TouchableOpacity 
+            style={styles.clearFiltersButtonEmpty}
+            onPress={() => setAppliedFilters({ maxPrice: null, restrictions: [] })}
+          >
+            <Text style={styles.clearFiltersTextEmpty}>Limpar filtros</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
+  // Componente do botão de carrinho flutuante
+  const FloatingCartButton = () => (
+    <View style={styles.floatingCartContainer}>
+      <TouchableOpacity 
+        style={styles.cartButton} 
+        onPress={handleCarrinhoPress}
+        activeOpacity={0.8}
+      >
+        <CarrinhoIcon 
+          width={40} 
+          height={40} 
+        />
+        
+        {hasItemsInCart() && (
+          <Text style={styles.cartBadgeText}>
+            {getTotalItemsInCart()}
+          </Text>
+        )}
+      </TouchableOpacity>
+      
+      {hasItemsInCart() && (
+        <View style={styles.verCarrinhoButton}>
+          <Text style={styles.verCarrinhoText}>Ver carrinho</Text>
+        </View>
+      )}
     </View>
   );
 
@@ -275,7 +435,7 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
-        data={produtos}
+        data={filteredProducts} // Usar produtos filtrados em vez de produtos originais
         renderItem={renderProductItem}
         keyExtractor={(item) => (item.id || item.produto_id).toString()}
         ListHeaderComponent={ListHeader}
@@ -285,7 +445,26 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         refreshing={refreshing}
         onRefresh={handleRefresh}
-        removeClippedSubviews={false} // Melhor performance
+        removeClippedSubviews={false}
+      />
+      
+      {/* Botão de carrinho flutuante */}
+      <FloatingCartButton />
+      
+      {/* Modal do Carrinho */}
+      <CartModal
+        visible={showCartModal}
+        onClose={() => setShowCartModal(false)}
+        restaurantName={restaurantDetails.nome}
+        cartItems={carrinho}
+        produtos={produtos} // Usar produtos originais no carrinho
+      />
+      
+      {/* Modal de Filtros */}
+      <FilterModal
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onApplyFilters={handleApplyFilters}
       />
     </SafeAreaView>
   );
@@ -373,36 +552,49 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 
-  // Novos estilos para campos adicionais
-  tipoText: {
-    fontSize: 12,
-    fontFamily: 'Nunito-Medium',
-    textAlign: 'center',
-  },
-
-  telefoneText: {
-    fontSize: 12,
-    fontFamily: 'Nunito-Regular',
-    textAlign: 'center',
-  },
-
   statusText: {
     fontSize: 16,
     fontFamily: 'Nunito-Medium',
     textAlign: 'center',
   },
 
+  // Estilos para indicador de filtros
+  filterIndicatorContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8F8F8',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    marginTop: 70,
+    marginBottom: -70,
+  },
+
+  filterIndicatorText: {
+    fontSize: 14,
+    fontFamily: 'Nunito-Regular',
+    color: '#666666',
+  },
+
+  clearFiltersButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: '#D9C0E7',
+    borderRadius: 12,
+  },
+
+  clearFiltersText: {
+    fontSize: 12,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#4E0777',
+  },
+
   sectionTitle: {
     marginTop: 70,
     marginBottom: 5,
     paddingHorizontal: 20,
-  },
-
-  sectionTitleText: {
-    fontSize: 16,
-    fontFamily: 'Nunito-SemiBold',
-    color: '#222222',
-    textAlign: 'center',
   },
 
   separator: {
@@ -432,11 +624,80 @@ const styles = StyleSheet.create({
   },
 
   emptyText: {
-    fontSize: 16,
-    color: '#888888',
-    fontFamily: 'Nunito-Regular',
+    fontSize: 18,
+    fontFamily: 'Nunito-ExtraBold',
+    color: '#F03800',
     textAlign: 'center',
-    lineHeight: 24,
+    marginBottom: 10,
+  },
+
+  clearFiltersButtonEmpty: {
+    marginTop: 15,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#D9C0E7',
+    borderRadius: 20,
+  },
+
+  clearFiltersTextEmpty: {
+    fontSize: 14,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#4E0777',
+  },
+
+  // Estilos para o botão de carrinho flutuante
+  floatingCartContainer: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    alignItems: 'flex-end',
+  },
+
+  verCarrinhoButton: {
+    width: 117,
+    height: 20,
+    backgroundColor: '#D9C0E7',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -15,
+    marginRight: 38,
+  },
+
+  verCarrinhoText: {
+    fontSize: 14,
+    fontFamily: 'Nunito-ExtraBold',
+    color: '#4E0777',
+  },
+
+  cartButton: {
+    width: 53,
+    height: 53,
+    borderRadius: 26.5,
+    backgroundColor: '#FFBE9D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+
+  cartBadgeText: {
+    position: 'absolute',
+    top: -1,
+    right: -2,
+    fontSize: 18,
+    fontFamily: 'Nunito-ExtraBold',
+    color: '#F03800',
+    textAlign: 'center',
+    textShadowColor: '#FFFFFF',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 2,
   },
 });
 

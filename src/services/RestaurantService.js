@@ -53,6 +53,26 @@ const MOCK_RESTAURANTS = [
   }
 ];
 
+// Mock data para produtos (mesma estrutura do backend)
+const MOCK_PRODUCTS = [
+  {
+    produto_id: 1,
+    restaurante_id: 1,
+    nome: "Feijoada Especial",
+    descricao: "Feijoada completa com arroz, couve, farofa e torresmo",
+    valor: "49.90",
+    tempo_preparo: 40,
+    disponivel: true,
+    selos: {
+      produto_id: 1,
+      sem_lactose: false,
+      sem_gluten: true,
+      sem_amendoim: true,
+      vegano: false
+    }
+  }
+];
+
 class RestaurantService {
   // Método para normalizar dados do restaurante
   static normalizeRestaurantData(restaurant) {
@@ -63,6 +83,21 @@ class RestaurantService {
       localizacao: restaurant.local,
       avaliacao: restaurant.numero_estrelas,
       saldo: typeof restaurant.saldo === 'string' ? parseFloat(restaurant.saldo) : restaurant.saldo
+    };
+  }
+
+  // Método para normalizar dados do produto
+  static normalizeProductData(product) {
+    return {
+      ...product,
+      id: product.produto_id,
+      produto_id: product.produto_id,
+      // Converter valor de string para number
+      valor: typeof product.valor === 'string' ? parseFloat(product.valor) : product.valor,
+      // Garantir que disponivel seja boolean
+      disponivel: product.disponivel !== undefined ? product.disponivel : true,
+      // Garantir que selos seja objeto
+      selos: product.selos || {}
     };
   }
 
@@ -152,20 +187,18 @@ class RestaurantService {
       
       const response = await apiClient.get(`/restaurantes/${restaurantId}/produtos`);
       
-      // Normalizar produtos
-      const normalizedProducts = response.data.map(product => ({
-        ...product,
-        id: product.produto_id || product.id,
-        produto_id: product.produto_id || product.id,
-        valor: typeof product.valor === 'string' ? parseFloat(product.valor) : product.valor,
-        disponivel: product.disponivel !== undefined ? product.disponivel : true
-      }));
+      console.log(`✅ Produtos da API (dados brutos):`, response.data);
       
-      console.log(`✅ ${normalizedProducts.length} produtos encontrados`);
+      // Normalizar produtos
+      const normalizedProducts = response.data.map(product => this.normalizeProductData(product));
+      console.log(`🔄 Produtos normalizados:`, normalizedProducts);
+      
       return normalizedProducts;
     } catch (error) {
-      console.log(`📦 Erro ao buscar produtos do restaurante ${restaurantId}:`, error.message);
-      return [];
+      console.log(`📦 Erro ao buscar produtos (${error.message}), usando mock`);
+      // Fallback para produtos mock do restaurante específico
+      const products = MOCK_PRODUCTS.filter(p => p.restaurante_id === parseInt(restaurantId));
+      return products.map(product => this.normalizeProductData(product));
     }
   }
 
@@ -174,9 +207,8 @@ class RestaurantService {
     try {
       console.log(`🔄 Atualizando status do restaurante ${id} para ${disponivel}...`);
       
-      const response = await apiClient.put(`/restaurantes/${id}/disponivel`, null, {
-        params: { disponivel }
-      });
+      // CORRIGIDO: Usar query parameter como no backend
+      const response = await apiClient.put(`/restaurantes/${id}/disponivel?disponivel=${disponivel}`);
       
       const normalizedData = this.normalizeRestaurantData(response.data);
       console.log(`✅ Status do restaurante ${id} atualizado`);
@@ -199,10 +231,25 @@ class RestaurantService {
     try {
       console.log(`🔄 Adicionando produto ao restaurante ${restaurantId}:`, productData);
       
-      const response = await apiClient.post(`/restaurantes/${restaurantId}/produto`, productData);
+      // Estrutura esperada pela API
+      const apiProductData = {
+        nome: productData.nome,
+        descricao: productData.descricao,
+        valor: productData.valor.toString(), // API espera string
+        tempo_preparo: productData.tempo_preparo || 30,
+        disponivel: productData.disponivel !== undefined ? productData.disponivel : true,
+        selos: productData.selos || {
+          sem_lactose: false,
+          sem_gluten: false,
+          sem_amendoim: false,
+          vegano: false
+        }
+      };
       
-      console.log(`✅ Produto adicionado ao restaurante ${restaurantId}`);
-      return response.data;
+      const response = await apiClient.post(`/restaurantes/${restaurantId}/produto`, apiProductData);
+      
+      console.log(`✅ Produto adicionado:`, response.data);
+      return this.normalizeProductData(response.data);
     } catch (error) {
       console.error(`❌ Erro ao adicionar produto ao restaurante ${restaurantId}:`, error.message);
       
@@ -219,10 +266,25 @@ class RestaurantService {
     try {
       console.log(`🔄 Atualizando produto ${productId} do restaurante ${restaurantId}:`, productData);
       
-      const response = await apiClient.put(`/restaurantes/${restaurantId}/produto/${productId}`, productData);
+      // Estrutura esperada pela API (apenas os campos editáveis)
+      const apiProductData = {
+        nome: productData.nome,
+        descricao: productData.descricao,
+        valor: productData.valor.toString(), // API espera string
+        tempo_preparo: productData.tempo_preparo || 30,
+        disponivel: productData.disponivel !== undefined ? productData.disponivel : true,
+        selos: productData.selos || {
+          sem_lactose: false,
+          sem_gluten: false,
+          sem_amendoim: false,
+          vegano: false
+        }
+      };
       
-      console.log(`✅ Produto ${productId} atualizado`);
-      return response.data;
+      const response = await apiClient.put(`/restaurantes/${restaurantId}/produto/${productId}`, apiProductData);
+      
+      console.log(`✅ Produto ${productId} atualizado:`, response.data);
+      return this.normalizeProductData(response.data);
     } catch (error) {
       console.error(`❌ Erro ao atualizar produto ${productId}:`, error.message);
       
@@ -239,12 +301,11 @@ class RestaurantService {
     try {
       console.log(`🔄 Atualizando disponibilidade do produto ${productId} para ${disponivel}...`);
       
-      const response = await apiClient.put(`/restaurantes/${restaurantId}/produto/${productId}/disponivel`, null, {
-        params: { disponivel }
-      });
+      // CORRIGIDO: Usar query parameter como no backend
+      const response = await apiClient.put(`/restaurantes/${restaurantId}/produto/${productId}/disponivel?disponivel=${disponivel}`);
       
-      console.log(`✅ Disponibilidade do produto ${productId} atualizada`);
-      return response.data;
+      console.log(`✅ Disponibilidade do produto ${productId} atualizada:`, response.data);
+      return this.normalizeProductData(response.data);
     } catch (error) {
       console.error(`❌ Erro ao atualizar disponibilidade do produto ${productId}:`, error.message);
       
@@ -261,7 +322,8 @@ class RestaurantService {
     try {
       console.log(`🔄 Removendo produto ${productId} do restaurante ${restaurantId}...`);
       
-      await apiClient.delete(`/restaurante/${restaurantId}/produto/${productId}`);
+      // CORRIGIDO: Rota correta do backend
+      const response = await apiClient.delete(`/restaurante/${restaurantId}/produto/${productId}`);
       
       console.log(`✅ Produto ${productId} removido com sucesso`);
       return true;
@@ -296,11 +358,10 @@ class RestaurantService {
     try {
       console.log(`🔄 Atualizando saldo do restaurante ${restaurantId} para ${saldo}...`);
       
-      const response = await apiClient.put(`/restaurante/${restaurantId}/saldo`, null, {
-        params: { saldo }
-      });
+      // CORRIGIDO: Usar query parameter como no backend
+      const response = await apiClient.put(`/restaurante/${restaurantId}/saldo?saldo=${saldo}`);
       
-      console.log(`✅ Saldo do restaurante ${restaurantId} atualizado`);
+      console.log(`✅ Saldo do restaurante ${restaurantId} atualizado:`, response.data);
       return response.data;
     } catch (error) {
       console.error(`❌ Erro ao atualizar saldo do restaurante ${restaurantId}:`, error.message);
