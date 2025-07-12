@@ -20,25 +20,25 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
   const [maxPrice, setMaxPrice] = useState('');
   const [selectedRestrictions, setSelectedRestrictions] = useState([]);
 
-  // Opções de restrições alimentares
+  // Opções de restrições alimentares - CORRIGIDO para usar os mesmos nomes do backend
   const restrictionOptions = [
     { 
-      id: 'vegan', 
+      id: 'Vegano', 
       label: 'Vegano', 
       image: require('../assets/Vegan.png') 
     },
     { 
-      id: 'glutenFree', 
+      id: 'Sem Glúten', 
       label: 'Sem Glúten', 
       image: require('../assets/GlutenFree.png') 
     },
     { 
-      id: 'peanutFree', 
+      id: 'Sem Amendoim', 
       label: 'Sem Amendoim', 
       image: require('../assets/PeanutFree.png') 
     },
     { 
-      id: 'lactoseFree', 
+      id: 'Sem Lactose', 
       label: 'Sem Lactose', 
       image: require('../assets/LactoseFree.png') 
     },
@@ -57,10 +57,8 @@ const FilterModal = ({ visible, onClose, onApplyFilters }) => {
   const handleApplyFilters = () => {
     const filters = {
       maxPrice: maxPrice ? parseFloat(maxPrice) : null,
-      restrictions: selectedRestrictions
+      restrictions: selectedRestrictions // Agora usa os nomes corretos como 'Sem Lactose', 'Vegano', etc.
     };
-    
-    console.log('Filtros aplicados:', filters);
     
     if (onApplyFilters) {
       onApplyFilters(filters);

@@ -40,20 +40,18 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   const loadRestaurantProducts = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Carregando produtos do restaurante:', restaurant?.restaurante_id || restaurant?.id);
+      console.log('Carregando produtos do restaurante:', restaurant?.restaurante_id || restaurant?.id);
       
       if (restaurant) {
         const restaurantId = restaurant.restaurante_id || restaurant.id;
         const productsList = await RestaurantService.getProductsByRestaurant(restaurantId);
-        
-        console.log('📦 Produtos carregados:', productsList);
         setProdutos(productsList || []);
       } else {
-        console.log('❌ Nenhum restaurante foi passado como parâmetro');
+        console.log('Nenhum restaurante foi passado como parâmetro');
         setProdutos([]);
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar produtos:', error);
+      console.error('Erro ao carregar produtos:', error);
       setProdutos([]);
     } finally {
       setLoading(false);
@@ -82,16 +80,29 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
         }
       }
 
-      // Filtro por restrições (excluir produtos que têm as restrições marcadas)
+      // Filtro por restrições usando selos
       if (filters.restrictions && filters.restrictions.length > 0) {
-        const productRestrictions = product.restricoes || [];
+        const productSelos = product.selos || {};
         
-        // Se o produto tem alguma das restrições marcadas, excluir
-        const hasRestrictedIngredients = filters.restrictions.some(restrictionFilter => 
-          productRestrictions.includes(restrictionFilter)
-        );
+        // Verificar se o produto não atende às restrições desejadas
+        const failsRestrictions = filters.restrictions.some(restriction => {
+          // Mapear restrições para selos
+          const seloMapping = {
+            'Sem Lactose': 'sem_lactose',
+            'Sem Glúten': 'sem_gluten',
+            'Sem Amendoim': 'sem_amendoim',
+            'Vegano': 'vegano'
+          };
+          
+          const seloKey = seloMapping[restriction];
+          if (seloKey) {
+            // Se o usuário quer produtos sem lactose, mas o produto tem lactose (selo false)
+            return productSelos[seloKey] !== true;
+          }
+          return false;
+        });
         
-        if (hasRestrictedIngredients) {
+        if (failsRestrictions) {
           return false;
         }
       }
@@ -102,12 +113,12 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
 
   // Produtos filtrados usando useMemo para otimização
   const filteredProducts = useMemo(() => {
-    console.log('🔍 Aplicando filtros:', appliedFilters);
-    console.log('📦 Produtos originais:', produtos.length);
+    console.log('Aplicando filtros:', appliedFilters);
+    console.log('Produtos originais:', produtos.length);
     
     const filtered = applyFilters(produtos, appliedFilters);
     
-    console.log('✅ Produtos filtrados:', filtered.length);
+    console.log('Produtos filtrados:', filtered.length);
     return filtered;
   }, [produtos, appliedFilters]);
 
@@ -157,7 +168,7 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   };
 
   const handleApplyFilters = (filters) => {
-    console.log('🔧 Filtros aplicados:', filters);
+    console.log('Filtros aplicados:', filters);
     setAppliedFilters(filters);
   };
 
@@ -174,7 +185,7 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
         delete newCarrinho[productId];
       }
       
-      console.log('🛒 Carrinho atualizado:', newCarrinho);
+      console.log('Carrinho atualizado:', newCarrinho);
       return newCarrinho;
     });
   };
@@ -231,17 +242,19 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   };
 
   // Renderizar cada item de produto com campos corretos da API
-  const renderProductItem = ({ item }) => (
-    <ProductItem
-      nome={item.nome}
-      descricao={item.descricao}
-      valor={item.valor}
-      restricoes={item.restricoes || []}
-      disponivel={item.disponivel}
-      tempo_preparo={item.tempo_preparo}
-      onQuantityChange={(quantidade) => handleQuantityChange(item.id || item.produto_id, quantidade)}
-    />
-  );
+  const renderProductItem = ({ item }) => {    
+    return (
+      <ProductItem
+        nome={item.nome}
+        descricao={item.descricao}
+        valor={item.valor}
+        selos={item.selos} // CORRIGIDO: agora usa selos ao invés de restricoes
+        disponivel={item.disponivel}
+        tempo_preparo={item.tempo_preparo}
+        onQuantityChange={(quantidade) => handleQuantityChange(item.id || item.produto_id, quantidade)}
+      />
+    );
+  };
 
   // Header da lista de produtos
   const ListHeader = () => (
