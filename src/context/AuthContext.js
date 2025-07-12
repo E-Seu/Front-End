@@ -22,10 +22,10 @@ const MOCK_USERS = [
   },
 
     {
-    id: 4,
-    nome: 'Comida Paixão',
-    email: 'restaurante@email.com',
-    senha: '123456',
+    id: 3,
+    nome: 'Restaurante Sabor Caseiro',
+    email: 'saborcaseiro@email.com',
+    senha: '123',
     type: 'restaurante',
     restaurantId: 1 // ID do restaurante associado
   }

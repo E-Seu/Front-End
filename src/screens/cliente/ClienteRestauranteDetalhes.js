@@ -3,7 +3,9 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ImageBackground
 import RetornarIcon from '../../assets/icons/retornarIcon';
 import OpcoesIcon from '../../assets/icons/opcoesIcon';
 import EstrelaIcon from '../../assets/icons/estrelaIcon';
+import CarrinhoIcon from '../../assets/icons/carrinhoIcon';
 import ProductItem from '../../components/ProductItem';
+import CartModal from '../../components/CartModal';
 import RestaurantService from '../../services/RestaurantService';
 
 // Imagens genéricas para restaurantes (mesmo array do RestaurantItem)
@@ -21,6 +23,8 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [carrinho, setCarrinho] = useState({});
+  const [showCartModal, setShowCartModal] = useState(false);
 
   // Carregar produtos do restaurante
   useEffect(() => {
@@ -103,7 +107,34 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
 
   const handleQuantityChange = (productId, quantidade) => {
     console.log(`Produto ${productId}: quantidade ${quantidade}`);
-    // Aqui você pode implementar a lógica para gerenciar o carrinho
+    
+    // Atualizar o carrinho
+    setCarrinho(prevCarrinho => {
+      const newCarrinho = { ...prevCarrinho };
+      
+      if (quantidade > 0) {
+        newCarrinho[productId] = quantidade;
+      } else {
+        delete newCarrinho[productId];
+      }
+      
+      console.log('🛒 Carrinho atualizado:', newCarrinho);
+      return newCarrinho;
+    });
+  };
+
+  const handleCarrinhoPress = () => {
+    console.log('Botão do carrinho pressionado');
+    console.log('Itens no carrinho:', carrinho);
+    setShowCartModal(true);
+  };
+
+  const getTotalItemsInCart = () => {
+    return Object.values(carrinho).reduce((total, quantidade) => total + quantidade, 0);
+  };
+
+  const hasItemsInCart = () => {
+    return getTotalItemsInCart() > 0;
   };
 
   const getStatusText = () => {
@@ -231,6 +262,34 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
     </View>
   );
 
+  // Componente do botão de carrinho flutuante
+  const FloatingCartButton = () => (
+    <View style={styles.floatingCartContainer}>
+      <TouchableOpacity 
+        style={styles.cartButton} 
+        onPress={handleCarrinhoPress}
+        activeOpacity={0.8}
+      >
+        <CarrinhoIcon 
+          width={40} 
+          height={40} 
+        />
+        
+        {hasItemsInCart() && (
+          <Text style={styles.cartBadgeText}>
+            {getTotalItemsInCart()}
+          </Text>
+        )}
+      </TouchableOpacity>
+      
+      {hasItemsInCart() && (
+        <View style={styles.verCarrinhoButton}>
+          <Text style={styles.verCarrinhoText}>Ver carrinho</Text>
+        </View>
+      )}
+    </View>
+  );
+
   // Se estiver carregando, mostrar loading
   if (loading) {
     return (
@@ -285,7 +344,19 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         refreshing={refreshing}
         onRefresh={handleRefresh}
-        removeClippedSubviews={false} // Melhor performance
+        removeClippedSubviews={false}
+      />
+      
+      {/* Botão de carrinho flutuante */}
+      <FloatingCartButton />
+      
+      {/* Modal do Carrinho */}
+      <CartModal
+        visible={showCartModal}
+        onClose={() => setShowCartModal(false)}
+        restaurantName={restaurantDetails.nome}
+        cartItems={carrinho}
+        produtos={produtos}
       />
     </SafeAreaView>
   );
@@ -373,7 +444,6 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 
-  // Novos estilos para campos adicionais
   tipoText: {
     fontSize: 12,
     fontFamily: 'Nunito-Medium',
@@ -432,12 +502,68 @@ const styles = StyleSheet.create({
   },
 
   emptyText: {
-    fontSize: 16,
-    color: '#888888',
-    fontFamily: 'Nunito-Regular',
+    fontSize: 18,
+    fontFamily: 'Nunito-ExtraBold',
+    color: '#F03800',
     textAlign: 'center',
-    lineHeight: 24,
+    marginBottom: 10,
   },
+
+  // Estilos para o botão de carrinho flutuante
+  floatingCartContainer: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    alignItems: 'flex-end',
+  },
+
+  verCarrinhoButton: {
+    width: 117,
+    height: 20,
+    backgroundColor: '#D9C0E7',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -15,
+    marginRight: 38,
+  },
+
+  verCarrinhoText: {
+    fontSize: 14,
+    fontFamily: 'Nunito-ExtraBold',
+    color: '#4E0777',
+  },
+
+  cartButton: {
+    width: 53,
+    height: 53,
+    borderRadius: 26.5,
+    backgroundColor: '#FFBE9D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+
+  cartBadgeText: {
+    position: 'absolute',
+    top: -1,
+    right: -2,
+    fontSize: 18,
+    fontFamily: 'Nunito-ExtraBold',
+    color: '#F03800',
+    textAlign: 'center',
+    textShadowColor: '#FFFFFF',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 2,
+  },
+
 });
 
 export default ClienteRestauranteDetalhes;
