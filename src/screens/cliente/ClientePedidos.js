@@ -1,60 +1,158 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import CurrentOrder from '../../components/CurrentOrder';
 import OldOrder from '../../components/OldOrder';
+import PedidoService from '../../services/PedidoService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const ClientePedidos = ({ navigation }) => {
-  const [pedidoAtual, setPedidoAtual] = useState({
-    horario: "12:30",
-    nomeRestaurante: "Restaurante Sabor Caseiro",
-    primeiroItem: "2x Feijoada",
-    status: "em preparo"
-  });
+const ClientePedidos = ({ navigation, route }) => {
+  const [pedidoAtual, setPedidoAtual] = useState(null);
+  const [historicoPedidos, setHistoricoPedidos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [usuarioId, setUsuarioId] = useState(null);
 
-  // Mock data para histórico de pedidos
-  const [historicoPedidos, setHistoricoPedidos] = useState([
-    {
-      id: 1,
-      dia: "15/07/2025",
-      horario: "19:45",
-      nomeRestaurante: "Pizzaria Bella Massa",
-      primeiroItem: "1x Pizza Margherita",
-      status: "concluido"
-    },
-    {
-      id: 2,
-      dia: "12/07/2025",
-      horario: "13:20",
-      nomeRestaurante: "Restaurante Sabor Caseiro",
-      primeiroItem: "1x Feijoada",
-      status: "concluido"
-    },
-    {
-      id: 3,
-      dia: "10/07/2025",
-      horario: "20:15",
-      nomeRestaurante: "Lanchonete do Campus",
-      primeiroItem: "2x Hambúrguer Artesanal",
-      status: "concluido"
+  // Carregar dados do usuário
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  // Carregar pedidos quando usuário estiver disponível
+  useEffect(() => {
+    if (usuarioId) {
+      loadPedidos();
     }
-  ]);
+  }, [usuarioId]);
 
-  const handleBackPress = () => {
-    navigation.goBack();
+  // Atualizar quando a tela receber foco (usuário navegar para ela)
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🔄 Tela de pedidos recebeu foco, atualizando...');
+      if (usuarioId) {
+        loadPedidos();
+      }
+    }, [usuarioId])
+  );
+
+  // Verificar se foi passado parâmetro para forçar atualização
+  useEffect(() => {
+    // ✅ Adicionar verificação de segurança para route e params
+    if (route?.params?.refresh && usuarioId) {
+      console.log('🔄 Atualização forçada por parâmetro');
+      loadPedidos();
+      
+      // Limpar o parâmetro para não recarregar sempre
+      if (navigation?.setParams) {
+        navigation.setParams({ refresh: false });
+      }
+    }
+  }, [route?.params?.refresh, usuarioId, navigation]);
+
+  const loadUserData = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('userData');
+      if (userData) {
+        const user = JSON.parse(userData);
+        const userId = user.id || user.usuario_id;
+        console.log('👤 Usuário carregado:', userId);
+        setUsuarioId(userId);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados do usuário:', error);
+    }
+  };
+
+  const loadPedidos = async () => {
+    try {
+      setLoading(true);
+      console.log('🔄 Carregando pedidos para usuário:', usuarioId);
+      
+      if (usuarioId) {
+        // Carregar histórico de pedidos
+        const historico = await PedidoService.historicoPedidos(usuarioId);
+        console.log('📦 Histórico carregado:', historico.length, 'pedidos');
+        
+        // Separar pedido atual dos pedidos históricos
+        const pedidoAtivo = historico.find(pedido => 
+          PedidoService.isPedidoAtivo(pedido.status)
+        );
+        
+        const pedidosConcluidos = historico.filter(pedido => 
+          !PedidoService.isPedidoAtivo(pedido.status)
+        );
+        
+        console.log('📊 Pedidos ativos:', pedidoAtivo ? 1 : 0);
+        console.log('📊 Pedidos concluídos:', pedidosConcluidos.length);
+        
+        // Formatar dados para exibição
+        if (pedidoAtivo) {
+          const { data, hora } = PedidoService.formatarDataHora(pedidoAtivo.data_hora);
+          setPedidoAtual({
+            id: pedidoAtivo.pedido_id,
+            horario: hora,
+            nomeRestaurante: `Restaurante ${pedidoAtivo.restaurante_id}`,
+            primeiroItem: `Pedido #${pedidoAtivo.pedido_id}`,
+            status: pedidoAtivo.status,
+            precoTotal: pedidoAtivo.preco_total,
+            localizacao: pedidoAtivo.localizacao,
+            observacao: pedidoAtivo.observacao
+          });
+          console.log('✅ Pedido atual definido:', pedidoAtivo.pedido_id);
+        } else {
+          setPedidoAtual(null);
+          console.log('❌ Nenhum pedido ativo encontrado');
+        }
+        
+        // Formatar histórico
+        const historicoFormatado = pedidosConcluidos.map(pedido => {
+          const { data, hora } = PedidoService.formatarDataHora(pedido.data_hora);
+          return {
+            id: pedido.pedido_id,
+            dia: data,
+            horario: hora,
+            nomeRestaurante: `Restaurante ${pedido.restaurante_id}`,
+            primeiroItem: `Pedido #${pedido.pedido_id}`,
+            status: pedido.status,
+            precoTotal: pedido.preco_total
+          };
+        });
+        
+        setHistoricoPedidos(historicoFormatado);
+        console.log('✅ Histórico formatado:', historicoFormatado.length, 'pedidos');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar pedidos:', error);
+      setPedidoAtual(null);
+      setHistoricoPedidos([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    console.log('🔄 Pull to refresh');
+    setRefreshing(true);
+    await loadPedidos();
   };
 
   const handleVisualizarPedido = () => {
-    console.log('Abrir modal de visualização do pedido');
-    // Aqui você pode implementar a navegação para o modal ou tela de detalhes do pedido
+    console.log('📱 Visualizar pedido:', pedidoAtual?.id);
+    // Aqui você pode navegar para tela de detalhes do pedido
+    // if (navigation?.navigate) {
+    //   navigation.navigate('PedidoDetalhes', { pedidoId: pedidoAtual.id });
+    // }
   };
 
   const handlePecaNovamanete = (pedido) => {
-    console.log('Peça Novamente pressionado para:', pedido.nomeRestaurante);
-    // Aqui você pode implementar a navegação para o restaurante ou adicionar ao carrinho
+    console.log('🔄 Peça novamente pedido:', pedido.id);
+    // Aqui você pode implementar a lógica para repetir o pedido
+    // Pode navegar para o restaurante ou adicionar itens ao carrinho
   };
 
   // Verificar se existe pedido atual
-  const temPedidoAtual = pedidoAtual && pedidoAtual.status !== 'concluido';
+  const temPedidoAtual = pedidoAtual && PedidoService.isPedidoAtivo(pedidoAtual.status);
 
   const renderOldOrderItem = ({ item }) => (
     <OldOrder
@@ -65,6 +163,25 @@ const ClientePedidos = ({ navigation }) => {
       onPecaNovamantePress={() => handlePecaNovamanete(item)}
     />
   );
+
+  // Componente de loading
+  const LoadingComponent = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#8B0BD5" />
+      <Text style={styles.loadingText}>Carregando pedidos...</Text>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>PEDIDOS</Text>
+        </View>
+        <LoadingComponent />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -77,6 +194,14 @@ const ClientePedidos = ({ navigation }) => {
       <ScrollView 
         style={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#8B0BD5']}
+            tintColor="#8B0BD5"
+          />
+        }
       >
         {/* Seção de Pedido Atual */}
         <Text style={styles.sectionTitle}>Pedido atual</Text>        
@@ -102,10 +227,10 @@ const ClientePedidos = ({ navigation }) => {
         )}
         
         <View style={styles.separatorHistorico} />
+        
         {/* Seção de Histórico */}
         <Text style={styles.sectionTitle}>Histórico</Text>
         
-      
         {/* Lista de Pedidos Antigos */}
         {historicoPedidos.length > 0 ? (
           <View style={styles.historicoContainer}>
@@ -149,25 +274,11 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F0F0F0',
   },
 
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#EEDCF9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
   headerTitle: {
     fontSize: 20,
     fontFamily: 'Nunito-Regular',
     color: '#888888',
     textAlign: 'center',
-  },
-
-  placeholder: {
-    width: 40,
-    height: 40,
   },
 
   content: {
@@ -233,6 +344,21 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito-Regular',
     color: '#888888',
     textAlign: 'center',
+  },
+
+  // Estilos para loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 50,
+    gap: 10,
+  },
+
+  loadingText: {
+    fontSize: 16,
+    color: '#888888',
+    fontFamily: 'Nunito-Regular',
   },
 
   bottomSpacing: {

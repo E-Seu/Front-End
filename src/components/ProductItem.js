@@ -4,16 +4,27 @@ import MaisIcon from '../assets/icons/maisIcon';
 import MenosIcon from '../assets/icons/menosIcon';
 
 const ProductItem = ({ 
+  produto_id,
+  restaurante_id, // ✅ Adicionado o restaurante_id
   nome = "Nome do Produto",
   descricao = "Descrição do produto",
   valor = 0,
-  disponivel = true, // Se o produto está disponível
+  tempo_preparo = 0,
+  disponivel = true,
   selos = {}, // Objeto com os selos: { sem_lactose: false, sem_gluten: true, sem_amendoim: true, vegano: false }
   onQuantityChange
 }) => {
   const [quantidade, setQuantidade] = useState(0);
   const [maisPressionado, setMaisPressionado] = useState(false);
   const [menosPressionado, setMenosPressionado] = useState(false);
+
+  // Log para debug
+  console.log('🛒 ProductItem props:');
+  console.log('📦 produto_id:', produto_id);
+  console.log('📦 restaurante_id:', restaurante_id);
+  console.log('📦 nome:', nome);
+  console.log('📦 disponivel:', disponivel);
+  console.log('📦 selos:', selos);
 
   // Mapeamento das imagens de selos (baseado na estrutura da API)
   const selosImages = {
@@ -28,8 +39,17 @@ const ProductItem = ({
     
     const novaQuantidade = quantidade + 1;
     setQuantidade(novaQuantidade);
+    
+    // Passar mais informações para o callback
     if (onQuantityChange) {
-      onQuantityChange(novaQuantidade);
+      onQuantityChange(novaQuantidade, {
+        produto_id,
+        restaurante_id,
+        nome,
+        valor,
+        tempo_preparo,
+        disponivel
+      });
     }
   };
 
@@ -37,8 +57,17 @@ const ProductItem = ({
     if (quantidade > 0) {
       const novaQuantidade = quantidade - 1;
       setQuantidade(novaQuantidade);
+      
+      // Passar mais informações para o callback
       if (onQuantityChange) {
-        onQuantityChange(novaQuantidade);
+        onQuantityChange(novaQuantidade, {
+          produto_id,
+          restaurante_id,
+          nome,
+          valor,
+          tempo_preparo,
+          disponivel
+        });
       }
     }
   };
@@ -47,6 +76,11 @@ const ProductItem = ({
     // Converter string para number se necessário
     const valorNumerico = typeof valor === 'string' ? parseFloat(valor) : valor;
     return `R$ ${valorNumerico.toFixed(2).replace('.', ',')}`;
+  };
+
+  const formatarTempoPreparo = (tempo) => {
+    if (!tempo || tempo === 0) return '';
+    return `${tempo} min`;
   };
 
   // Determinar se os ícones devem estar na versão colorida
@@ -92,9 +126,12 @@ const ProductItem = ({
             {descricao}
           </Text>
           
-          <Text style={[styles.valor, !disponivel && styles.textoIndisponivel]}>
-            {formatarValor(valor)}
-          </Text>
+          {/* Informações de preço e tempo */}
+          <View style={styles.priceTimeContainer}>
+            <Text style={[styles.valor, !disponivel && styles.textoIndisponivel]}>
+              {formatarValor(valor)}
+            </Text>
+          </View>
 
           {/* Status de disponibilidade */}
           {!disponivel && (
@@ -220,11 +257,24 @@ const styles = StyleSheet.create({
     flex: 1, 
   },
 
+  priceTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+
   valor: {
     fontSize: 14,
     fontFamily: 'Nunito-Medium',
     color: '#4E0777',
-    marginTop: 10,
+  },
+
+  tempoPreparo: {
+    fontSize: 12,
+    fontFamily: 'Nunito-Regular',
+    color: '#666666',
+    fontStyle: 'italic',
   },
 
   statusIndisponivel: {
@@ -233,6 +283,13 @@ const styles = StyleSheet.create({
     color: '#FF6B6B',
     marginTop: 4,
     fontStyle: 'italic',
+  },
+
+  debugText: {
+    fontSize: 10,
+    fontFamily: 'Nunito-Regular',
+    color: '#999999',
+    marginTop: 2,
   },
 
   textoIndisponivel: {

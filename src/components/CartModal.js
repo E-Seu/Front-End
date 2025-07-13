@@ -9,17 +9,35 @@ import {
   Dimensions,
   ScrollView,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import CustomInput from './CustomInput';
 import LocalizacaoIcon from '../assets/icons/localizacaoIcon';
 import CompletedOrderModal from './CompletedOrderModal';
+import PedidoService from '../services/PedidoService';
+import LoginService from '../services/LoginService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-const CartModal = ({ visible, onClose, restaurantName, cartItems, produtos }) => {
+const CartModal = ({ 
+  visible, 
+  onClose, 
+  restaurantName, 
+  restaurantId, 
+  cartItems, 
+  produtos, 
+  navigation,
+  navigateToScreen // ✅ Adicionar navigateToScreen como prop
+}) => {
   const [localEntrega, setLocalEntrega] = useState('');
   const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [pedidoCriado, setPedidoCriado] = useState(null);
+
+  console.log('📦 CartModal restaurantId:', restaurantId);
+  console.log('📦 CartModal tipo do restaurantId:', typeof restaurantId);
 
   // Função para calcular o total
   const calculateTotal = () => {
@@ -59,27 +77,143 @@ const CartModal = ({ visible, onClose, restaurantName, cartItems, produtos }) =>
     return cartItems && Object.keys(cartItems).length > 0;
   };
 
-  const handleFinalizarPedido = () => {
-    if (!hasItemsInCart()) {
-      return; // Não fazer nada se não houver itens
-    }
-
-    console.log('Finalizar pedido:', {
-      restaurante: restaurantName,
-      localEntrega: localEntrega,
-      itens: getCartItemsWithDetails(),
-      total: calculateTotal()
-    });
+  // Função para criar observação com detalhes dos itens
+  const criarObservacaoComItens = () => {
+    const itensDetalhados = getCartItemsWithDetails();
+    const observacao = itensDetalhados.map(item => 
+      `${item.quantidade}x ${item.nome} - R$ ${item.subtotal.toFixed(2)}`
+    ).join('; ');
     
-    // Fechar o modal do carrinho e abrir o modal de pedido concluído
-    onClose();
-    setShowCompletedModal(true);
+    return observacao;
   };
 
-  const handleGoToOrders = () => {
+  const handleFinalizarPedido = async () => {
+    if (!hasItemsInCart()) {
+      Alert.alert('Erro', 'Carrinho vazio! Adicione itens antes de finalizar.');
+      return;
+    }
+
+    if (!localEntrega.trim()) {
+      Alert.alert('Erro', 'Por favor, informe o local de entrega.');
+      return;
+    }
+
+    if (!restaurantId) {
+      Alert.alert('Erro', 'ID do restaurante não encontrado. Não é possível finalizar o pedido.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('🛒 Iniciando criação do pedido...');
+
+      // Obter dados do usuário logado
+      const currentUser = await LoginService.getCurrentUser();
+      if (!currentUser.success) {
+        Alert.alert('Erro', 'Usuário não encontrado. Faça login novamente.');
+        return;
+      }
+
+      const itensCarrinho = getCartItemsWithDetails();
+      const total = calculateTotal();
+      const clienteId = currentUser.user.id || currentUser.user.usuario_id;
+
+      // Dados do pedido para enviar à API
+      const pedidoData = {
+        cliente_id: clienteId,
+        restaurante_id: parseInt(restaurantId),
+        entregador_id: null,
+        status: "aguardando",
+        preco_total: total,
+        localizacao: localEntrega.trim(),
+        data_hora: new Date().toISOString(),
+        observacao: criarObservacaoComItens()
+      };
+
+      console.log('📦 Dados do pedido a ser criado:', pedidoData);
+      console.log('👤 Cliente ID:', clienteId);
+      console.log('🏪 Restaurante ID:', restaurantId);
+      console.log('💰 Total:', total);
+      console.log('📍 Local:', localEntrega);
+
+      // Criar pedido via API
+      const novoPedido = await PedidoService.criarPedido(pedidoData);
+
+      if (novoPedido) {
+        console.log('✅ Pedido criado com sucesso:', novoPedido);
+        
+        // Salvar dados do pedido criado
+        setPedidoCriado(novoPedido);
+        
+        // Fechar modal do carrinho primeiro
+        onClose();
+        
+        // Limpar campos
+        setLocalEntrega('');
+        
+        // Pequeno delay para garantir que o pedido foi salvo
+        setTimeout(() => {
+          setShowCompletedModal(true);
+        }, 100);
+        
+      } else {
+        Alert.alert('Erro', 'Falha ao criar pedido. Tente novamente.');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao finalizar pedido:', error);
+      Alert.alert('Erro', `Ocorreu um erro ao finalizar o pedido: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+ const handleGoToOrders = () => {
+    console.log('🔄 CartModal - Navegando para tela de pedidos...');
+    console.log('🔄 Pedido criado:', pedidoCriado);
+    
     setShowCompletedModal(false);
-    // Aqui você pode navegar para a tela de pedidos
-    console.log('Navegar para pedidos');
+    
+    // Navegar para a tela de pedidos
+    // Usar navigateToScreen do AppLayout se disponível
+    if (typeof navigateToScreen === 'function') {
+      console.log('🔄 Usando navigateToScreen do AppLayout...');
+      navigateToScreen('ClientePedidos', { 
+        refresh: true,
+        newOrderId: pedidoCriado?.pedido_id,
+        timestamp: Date.now()
+      });
+    }
+    // Fallback para React Navigation se disponível
+    else if (navigation && navigation.navigate) {
+      console.log('🔄 Usando React Navigation...');
+      navigation.navigate('ClientePedidos', { 
+        refresh: true,
+        newOrderId: pedidoCriado?.pedido_id,
+        timestamp: Date.now()
+      });
+    }
+    else {
+      console.warn('⚠️ Nem navigateToScreen nem navigation estão disponíveis');
+    }
+    
+    // Limpar estado após navegação
+    setTimeout(() => {
+      setPedidoCriado(null);
+    }, 500);
+  };
+
+  const handleCloseModal = () => {
+    if (!loading) {
+      onClose();
+      setLocalEntrega('');
+      // Não limpar pedidoCriado aqui para manter referência
+    }
+  };
+
+  const handleCloseCompletedModal = () => {
+    console.log('🔄 Fechando modal de pedido concluído');
+    setShowCompletedModal(false);
+    setPedidoCriado(null);
   };
 
   const renderCartItem = ({ item }) => (
@@ -102,14 +236,15 @@ const CartModal = ({ visible, onClose, restaurantName, cartItems, produtos }) =>
         transparent
         visible={visible}
         animationType="fade"
-        onRequestClose={onClose}
+        onRequestClose={handleCloseModal}
       >
         {/* Overlay */}
         <View style={styles.overlay}>
           <TouchableOpacity 
             style={styles.overlayTouch} 
-            onPress={onClose}
+            onPress={handleCloseModal}
             activeOpacity={1}
+            disabled={loading}
           />
           
           {/* Modal Content */}
@@ -126,20 +261,22 @@ const CartModal = ({ visible, onClose, restaurantName, cartItems, produtos }) =>
                 style={styles.scrollContainer}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                scrollEnabled={!loading}
               >
                 {/* Header */}
                 <Text style={styles.restaurantName}>{restaurantName}</Text>
-                
+
                 {/* Pergunta sobre local */}
                 <Text style={styles.questionText}>Qual o local de entrega?</Text>
                 
                 {/* Input para local com ícone */}
                 <View style={styles.inputWithIcon}>
                   <CustomInput
-                    placeholder="Local"
+                    placeholder="Ex: PPGCC, Bloco A, Sala 101"
                     value={localEntrega}
                     onChangeText={setLocalEntrega}
                     style={styles.inputContainer}
+                    editable={!loading}
                   />
                   <View style={styles.iconContainer}>
                     <LocalizacaoIcon width={20} height={20} color="#8B0BD5" />
@@ -151,6 +288,9 @@ const CartModal = ({ visible, onClose, restaurantName, cartItems, produtos }) =>
                   {isCartEmpty ? (
                     <View style={styles.emptyCartContainer}>
                       <Text style={styles.emptyCartText}>Seu carrinho está vazio</Text>
+                      <Text style={styles.emptyCartSubText}>
+                        Adicione itens para finalizar o pedido
+                      </Text>
                     </View>
                   ) : (
                     <FlatList
@@ -173,6 +313,22 @@ const CartModal = ({ visible, onClose, restaurantName, cartItems, produtos }) =>
                   <Text style={styles.totalText}>R$ {total.toFixed(2)}</Text>
                 </View>
                 
+                {/* Resumo do pedido */}
+                {!isCartEmpty && (
+                  <View style={styles.resumoContainer}>
+                    <Text style={styles.resumoTitle}>Resumo do Pedido:</Text>
+                    <Text style={styles.resumoText}>
+                      {cartItemsWithDetails.length} {cartItemsWithDetails.length === 1 ? 'item' : 'itens'}
+                    </Text>
+                    <Text style={styles.resumoText}>
+                      Restaurante: {restaurantName}
+                    </Text>
+                    <Text style={styles.resumoText}>
+                      Local de entrega: {localEntrega || 'Não informado'}
+                    </Text>
+                  </View>
+                )}
+                
                 {/* Espaçamento para o botão fixo */}
                 <View style={styles.bottomSpacing} />
               </ScrollView>
@@ -182,18 +338,25 @@ const CartModal = ({ visible, onClose, restaurantName, cartItems, produtos }) =>
                 <TouchableOpacity 
                   style={[
                     styles.finalizarButton,
-                    isCartEmpty && styles.finalizarButtonDisabled
+                    (isCartEmpty || loading) && styles.finalizarButtonDisabled
                   ]} 
                   onPress={handleFinalizarPedido}
-                  activeOpacity={isCartEmpty ? 1 : 0.8}
-                  disabled={isCartEmpty}
+                  activeOpacity={(isCartEmpty || loading) ? 1 : 0.8}
+                  disabled={isCartEmpty || loading}
                 >
-                  <Text style={[
-                    styles.finalizarButtonText,
-                    isCartEmpty && styles.finalizarButtonTextDisabled
-                  ]}>
-                    Finalizar Pedido
-                  </Text>
+                  {loading ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color="#4E0777" />
+                      <Text style={styles.loadingText}>Finalizando...</Text>
+                    </View>
+                  ) : (
+                    <Text style={[
+                      styles.finalizarButtonText,
+                      (isCartEmpty || loading) && styles.finalizarButtonTextDisabled
+                    ]}>
+                      Finalizar Pedido
+                    </Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </KeyboardAvoidingView>
@@ -201,11 +364,14 @@ const CartModal = ({ visible, onClose, restaurantName, cartItems, produtos }) =>
         </View>
       </Modal>
       
-      {/* Modal de pedido concluído */}
       <CompletedOrderModal
         visible={showCompletedModal}
-        onClose={() => setShowCompletedModal(false)}
+        onClose={handleCloseCompletedModal}
         onGoToOrders={handleGoToOrders}
+        pedidoId={pedidoCriado?.pedido_id}
+        restaurantName={restaurantName}
+        total={total}
+        navigateToScreen={navigateToScreen} // ✅ Passar navigateToScreen
       />
     </>
   );
@@ -273,6 +439,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   
+  debugInfo: {
+    fontSize: 10,
+    fontFamily: 'monospace',
+    color: '#999999',
+    marginBottom: 10,
+  },
+  
   questionText: {
     fontSize: 14,
     fontFamily: 'Nunito-Regular',
@@ -312,8 +485,16 @@ const styles = StyleSheet.create({
   
   emptyCartText: {
     fontSize: 16,
-    fontFamily: 'Nunito-Regular',
+    fontFamily: 'Nunito-SemiBold',
     color: '#888888',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  
+  emptyCartSubText: {
+    fontSize: 14,
+    fontFamily: 'Nunito-Regular',
+    color: '#AAAAAA',
     textAlign: 'center',
   },
   
@@ -362,19 +543,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   
   totalText: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Nunito-ExtraBold',
     color: '#4E0777',
   },
   
   totalLabel: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Nunito-ExtraBold',
     color: '#4E0777',
+  },
+  
+  resumoContainer: {
+    backgroundColor: '#F8F9FA',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  
+  resumoTitle: {
+    fontSize: 14,
+    fontFamily: 'Nunito-Bold',
+    color: '#4E0777',
+    marginBottom: 8,
+  },
+  
+  resumoText: {
+    fontSize: 12,
+    fontFamily: 'Nunito-Regular',
+    color: '#666666',
+    marginBottom: 4,
   },
   
   bottomSpacing: {
@@ -425,6 +627,18 @@ const styles = StyleSheet.create({
   
   finalizarButtonTextDisabled: {
     color: '#888888',
+  },
+  
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  
+  loadingText: {
+    fontSize: 14,
+    fontFamily: 'Nunito-Regular',
+    color: '#4E0777',
   },
 });
 

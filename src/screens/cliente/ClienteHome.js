@@ -7,40 +7,72 @@ import NotificacaoIcon from '../../assets/icons/notificacaoIcon';
 import RestaurantItem from '../../components/RestaurantItem';
 import { useAuth } from '../../context/AuthContext';
 import RestaurantService from '../../services/RestaurantService';
+import ClienteService from '../../services/ClienteService';
+import LoginService from '../../services/LoginService';
 
 const ClienteHome = () => {
   const navigation = useNavigation();
-  const { userName } = useAuth();
+  const { userName, user } = useAuth();
   
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState(new Set());
+  const [clienteData, setClienteData] = useState(null);
 
-  // Carregar restaurantes quando o componente montar
+  // Carregar dados quando o componente montar
   useEffect(() => {
-    loadRestaurants();
+    loadInitialData();
   }, []);
 
-  const loadRestaurants = async () => {
+  const loadInitialData = async () => {
     try {
       setLoading(true);
-      const restaurantsData = await RestaurantService.getAllRestaurants();
-      setRestaurants(restaurantsData);
+      
+      // Carregar dados do usuário atual
+      const currentUser = await LoginService.getCurrentUser();
+      console.log('👤 Usuário atual:', currentUser);
+      
+      if (currentUser.success && currentUser.user) {
+        // Carregar dados específicos do cliente
+        const cliente = await ClienteService.getCliente(currentUser.user.id);
+        console.log('🛒 Dados do cliente:', cliente);
+        setClienteData(cliente);
+        
+        // Carregar favoritos do cliente
+        const favoritosData = await ClienteService.listarFavoritos(currentUser.user.id);
+        console.log('❤️ Favoritos do cliente:', favoritosData);
+        setFavorites(new Set(favoritosData.favoritos));
+      }
+      
+      // Carregar restaurantes
+      await loadRestaurants();
     } catch (error) {
-      console.error('Erro ao carregar restaurantes:', error);
+      console.error('❌ Erro ao carregar dados iniciais:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const loadRestaurants = async () => {
+    try {
+      const restaurantsData = await RestaurantService.getAllRestaurants();
+      console.log('🍽️ Restaurantes carregados:', restaurantsData.length);
+      setRestaurants(restaurantsData);
+    } catch (error) {
+      console.error('❌ Erro ao carregar restaurantes:', error);
+    }
+  };
+
   const handleFavoritosPress = () => {
-    // Criar lista de restaurantes favoritos com a propriedade isFavorite correta
+    // Criar lista de restaurantes favoritos
     const favoritedRestaurants = restaurants
       .filter(restaurant => favorites.has(restaurant.id))
       .map(restaurant => ({
         ...restaurant,
-        isFavorite: true // Garantir que está marcado como favorito
+        isFavorite: true
       }));
+    
+    console.log('❤️ Navegando para favoritos:', favoritedRestaurants.length, 'restaurantes');
     
     navigation.navigate('ClienteFavoritos', { 
       favoritedRestaurants: favoritedRestaurants,
@@ -49,28 +81,50 @@ const ClienteHome = () => {
   };
 
   const handleOpcoesPress = () => {
-    console.log('Opções pressionado');
+    console.log('⚙️ Opções pressionado');
+    // Aqui você pode navegar para uma tela de configurações
+    // navigation.navigate('ClienteConfiguracoes');
   };
 
   const handleNotificacaoPress = () => {
-    console.log('Notificação pressionado');
+    console.log('🔔 Notificação pressionado');
+    // Aqui você pode navegar para uma tela de notificações
+    // navigation.navigate('ClienteNotificacoes');
   };
 
-  const handleFavoritedPress = (restaurantId, isFavorite) => {
-    setFavorites(prevFavorites => {
-      const newFavorites = new Set(prevFavorites);
-      if (isFavorite) {
-        newFavorites.add(restaurantId);
-      } else {
-        newFavorites.delete(restaurantId);
+  const handleFavoritedPress = async (restaurantId, isFavorite) => {
+    try {
+      const currentUser = await LoginService.getCurrentUser();
+      
+      if (currentUser.success && currentUser.user) {
+        if (isFavorite) {
+          // Adicionar aos favoritos
+          console.log('❤️ Adicionando restaurante aos favoritos:', restaurantId);
+          await ClienteService.adicionarFavorito(currentUser.user.id, restaurantId);
+        } else {
+          // Remover dos favoritos
+          console.log('💔 Removendo restaurante dos favoritos:', restaurantId);
+          await ClienteService.removerFavorito(currentUser.user.id, restaurantId);
+        }
+        
+        // Atualizar estado local
+        setFavorites(prevFavorites => {
+          const newFavorites = new Set(prevFavorites);
+          if (isFavorite) {
+            newFavorites.add(restaurantId);
+          } else {
+            newFavorites.delete(restaurantId);
+          }
+          return newFavorites;
+        });
       }
-      return newFavorites;
-    });
-    console.log(`Restaurante ${restaurantId} favorito: ${isFavorite}`);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar favorito:', error);
+    }
   };
 
   const handleRestaurantPress = (restaurant) => {
-    console.log('Restaurante pressionado:', restaurant.nome);
+    console.log('🍽️ Restaurante pressionado:', restaurant.nome);
     navigation.navigate('RestauranteDetalhes', { restaurant });
   };
 
@@ -86,7 +140,9 @@ const ClienteHome = () => {
   );
 
   const ListHeader = () => (
-    <Text style={styles.title}>Confira os restaurantes do campus!</Text>
+    <View style={styles.headerContainer}>
+      <Text style={styles.title}>Confira os restaurantes do campus!</Text>
+    </View>
   );
 
   if (loading) {
@@ -112,7 +168,7 @@ const ClienteHome = () => {
         
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#8B0BD5" />
-          <Text style={styles.loadingText}>Carregando restaurantes...</Text>
+          <Text style={styles.loadingText}>Carregando dados...</Text>
         </View>
       </SafeAreaView>
     );
@@ -159,7 +215,7 @@ const ClienteHome = () => {
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         refreshing={loading}
-        onRefresh={loadRestaurants}
+        onRefresh={loadInitialData}
       />
     </SafeAreaView>
   );
@@ -213,14 +269,19 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
 
+  headerContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 15,
+  },
+
   title: {
     fontSize: 14,
     fontFamily: 'Nunito-Bold',
     color: '#4E0777',
     marginBottom: 15,
-    marginTop: 20,
   },
-
+  
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

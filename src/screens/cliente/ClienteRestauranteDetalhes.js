@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ImageBackground, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ImageBackground, FlatList, ActivityIndicator, Alert } from 'react-native';
 import RetornarIcon from '../../assets/icons/retornarIcon';
 import OpcoesIcon from '../../assets/icons/opcoesIcon';
 import EstrelaIcon from '../../assets/icons/estrelaIcon';
@@ -32,26 +32,58 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
     restrictions: []
   });
 
+  // 🔍 LOG CRÍTICO: Verificar os dados do restaurante
+  console.log('🏪 ClienteRestauranteDetalhes - Dados do restaurante:');
+  console.log('📦 restaurant completo:', JSON.stringify(restaurant, null, 2));
+  console.log('📦 restaurant.id:', restaurant?.id);
+  console.log('📦 restaurant.restaurante_id:', restaurant?.restaurante_id);
+  console.log('📦 restaurant.nome:', restaurant?.nome);
+
+  // 🎯 SOLUÇÃO: Garantir que temos um ID válido
+  const restaurantId = restaurant?.restaurante_id || restaurant?.id;
+
+  console.log('📦 restaurantId final calculado:', restaurantId);
+  console.log('📦 tipo do restaurantId:', typeof restaurantId);
+
+  // Verificar se o restaurantId é válido
+  useEffect(() => {
+    if (!restaurantId) {
+      console.error('❌ ERRO CRÍTICO: restaurantId é undefined/null');
+      console.error('❌ restaurant object:', restaurant);
+      
+      // Mostrar alerta e voltar
+      Alert.alert(
+        'Erro',
+        'Restaurante não identificado. Voltando para a tela anterior.',
+        [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]
+      );
+    }
+  }, [restaurantId, restaurant, navigation]);
+
   // Carregar produtos do restaurante
   useEffect(() => {
-    loadRestaurantProducts();
-  }, [restaurant]);
+    if (restaurantId) {
+      loadRestaurantProducts();
+    }
+  }, [restaurantId]);
 
   const loadRestaurantProducts = async () => {
     try {
       setLoading(true);
-      console.log('Carregando produtos do restaurante:', restaurant?.restaurante_id || restaurant?.id);
+      console.log('🔄 Carregando produtos do restaurante:', restaurantId);
       
-      if (restaurant) {
-        const restaurantId = restaurant.restaurante_id || restaurant.id;
+      if (restaurantId) {
         const productsList = await RestaurantService.getProductsByRestaurant(restaurantId);
+        console.log('📦 Produtos carregados:', productsList);
         setProdutos(productsList || []);
       } else {
-        console.log('Nenhum restaurante foi passado como parâmetro');
+        console.log('❌ Nenhum restaurantId válido encontrado');
         setProdutos([]);
       }
     } catch (error) {
-      console.error('Erro ao carregar produtos:', error);
+      console.error('❌ Erro ao carregar produtos:', error);
       setProdutos([]);
     } finally {
       setLoading(false);
@@ -113,12 +145,12 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
 
   // Produtos filtrados usando useMemo para otimização
   const filteredProducts = useMemo(() => {
-    console.log('Aplicando filtros:', appliedFilters);
-    console.log('Produtos originais:', produtos.length);
+    console.log('🔍 Aplicando filtros:', appliedFilters);
+    console.log('📦 Produtos originais:', produtos.length);
     
     const filtered = applyFilters(produtos, appliedFilters);
     
-    console.log('Produtos filtrados:', filtered.length);
+    console.log('📦 Produtos filtrados:', filtered.length);
     return filtered;
   }, [produtos, appliedFilters]);
 
@@ -163,17 +195,31 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   };
 
   const handleOpcoesPress = () => {
-    console.log('Opções do restaurante pressionado');
+    console.log('🔄 Opções do restaurante pressionado');
     setShowFilterModal(true);
   };
 
   const handleApplyFilters = (filters) => {
-    console.log('Filtros aplicados:', filters);
+    console.log('🔍 Filtros aplicados:', filters);
     setAppliedFilters(filters);
   };
 
-  const handleQuantityChange = (productId, quantidade) => {
-    console.log(`Produto ${productId}: quantidade ${quantidade}`);
+  const handleQuantityChange = (quantidade, produtoInfo) => {
+    console.log('🔄 Mudança de quantidade:');
+    console.log('📦 Produto:', produtoInfo);
+    console.log('📦 Nova quantidade:', quantidade);
+    console.log('📦 Produto restaurante_id:', produtoInfo?.restaurante_id);
+    console.log('📦 Tela restaurante_id:', restaurantId);
+
+    // Validar se o produto pertence ao restaurante atual
+    if (produtoInfo?.restaurante_id && produtoInfo.restaurante_id !== restaurantId) {
+      console.error('❌ Produto não pertence ao restaurante atual');
+      Alert.alert('Erro', 'Este produto não pertence ao restaurante atual.');
+      return;
+    }
+
+    const productId = produtoInfo?.produto_id || produtoInfo?.id;
+    console.log('📦 Product ID final:', productId);
     
     // Atualizar o carrinho
     setCarrinho(prevCarrinho => {
@@ -185,14 +231,24 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
         delete newCarrinho[productId];
       }
       
-      console.log('Carrinho atualizado:', newCarrinho);
+      console.log('🛒 Carrinho atualizado:', newCarrinho);
       return newCarrinho;
     });
   };
 
   const handleCarrinhoPress = () => {
-    console.log('Botão do carrinho pressionado');
-    console.log('Itens no carrinho:', carrinho);
+    console.log('🛒 Botão do carrinho pressionado');
+    console.log('📦 restaurantId sendo passado:', restaurantId);
+    console.log('📦 restaurant?.nome:', restaurant?.nome);
+    console.log('📦 carrinho:', carrinho);
+    console.log('📦 produtos:', produtos);
+    
+    // Verificação adicional antes de abrir o modal
+    if (!restaurantId) {
+      Alert.alert('Erro', 'ID do restaurante não encontrado. Não é possível abrir o carrinho.');
+      return;
+    }
+    
     setShowCartModal(true);
   };
 
@@ -242,16 +298,20 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   };
 
   // Renderizar cada item de produto com campos corretos da API
-  const renderProductItem = ({ item }) => {    
+  const renderProductItem = ({ item }) => {
+    console.log('🎨 Renderizando produto:', item);
+    
     return (
       <ProductItem
+        produto_id={item.produto_id || item.id}
+        restaurante_id={item.restaurante_id || restaurantId}
         nome={item.nome}
         descricao={item.descricao}
         valor={item.valor}
-        selos={item.selos} // CORRIGIDO: agora usa selos ao invés de restricoes
-        disponivel={item.disponivel}
         tempo_preparo={item.tempo_preparo}
-        onQuantityChange={(quantidade) => handleQuantityChange(item.id || item.produto_id, quantidade)}
+        disponivel={item.disponivel}
+        selos={item.selos}
+        onQuantityChange={handleQuantityChange}
       />
     );
   };
@@ -451,11 +511,12 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
       {/* Botão de carrinho flutuante */}
       <FloatingCartButton />
       
-      {/* Modal do Carrinho */}
+      {/* 🎯 MODAL DO CARRINHO - VERIFICAR ESTAS PROPS */}
       <CartModal
         visible={showCartModal}
         onClose={() => setShowCartModal(false)}
         restaurantName={restaurantDetails.nome}
+        restaurantId={restaurantId} // 🔍 Esta é a prop crítica
         cartItems={carrinho}
         produtos={produtos} // Usar produtos originais no carrinho
       />
@@ -556,6 +617,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Nunito-Medium',
     textAlign: 'center',
+  },
+
+  debugInfo: {
+    fontSize: 10,
+    fontFamily: 'monospace',
+    color: '#999999',
+    marginTop: 4,
   },
 
   // Estilos para indicador de filtros

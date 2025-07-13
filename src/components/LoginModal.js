@@ -17,95 +17,101 @@ import {
 import { useAuth } from '../context/AuthContext';
 import CustomButton from './CustomButton';
 import CustomInput from './CustomInput';
+import LoginService from '../services/LoginService';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
 const LoginModal = ({ visible, onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   
-  const { login, loading, quickLogin } = useAuth();
+  const { login } = useAuth();
   
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-  if (visible) {
-    // Animar entrada - mais lenta
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600, // Aumentado de 300 para 600ms
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayOpacity, {
-        toValue: 1,
-        duration: 600, // Aumentado de 300 para 600ms
-        useNativeDriver: true,
-      }),
-    ]).start();
-  } else {
-    // Animar saída - mais lenta
+    if (visible) {
+      // Animar entrada
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Animar saída
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: screenHeight,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+
+  const closeModal = () => {
     Animated.parallel([
       Animated.timing(slideAnim, {
         toValue: screenHeight,
-        duration: 400, // Aumentado de 250 para 400ms
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(overlayOpacity, {
         toValue: 0,
-        duration: 400, // Aumentado de 250 para 400ms
+        duration: 400,
         useNativeDriver: true,
       }),
-    ]).start();
-  }
-}, [visible]);
-
-const closeModal = () => {
-  Animated.parallel([
-    Animated.timing(slideAnim, {
-      toValue: screenHeight,
-      duration: 400, // Aumentado de 250 para 400ms
-      useNativeDriver: true,
-    }),
-    Animated.timing(overlayOpacity, {
-      toValue: 0,
-      duration: 400, // Aumentado de 250 para 400ms
-      useNativeDriver: true,
-    }),
-  ]).start(() => {
-    onClose();
-    setEmail('');
-    setPassword('');
-  });
-};
-    const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-        Alert.alert('Erro', 'Por favor, preencha todos os campos');
-        return;
-    }
-
-    const result = await login(email.trim(), password);
-    
-    if (result.success) {
-        Alert.alert(
-        'Sucesso!', 
-        `Bem-vindo(a), ${result.user.nome}!`, // Mudado de result.user.name para result.user.nome
-        [{ text: 'OK', onPress: closeModal }]
-        );
-    } else {
-        Alert.alert('Erro', result.error);
-    }
-    };
-
-  const handleQuickLogin = (userType) => {
-    quickLogin(userType);
-    closeModal();
+    ]).start(() => {
+      onClose();
+      setEmail('');
+      setPassword('');
+    });
   };
 
-  const fillUserData = (userEmail, userPassword) => {
-    setEmail(userEmail);
-    setPassword(userPassword);
+  const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Erro', 'Por favor, preencha todos os campos');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('🔐 Tentando fazer login com:', email.trim());
+      
+      const result = await login(email.trim(), password);
+      
+      if (result.success) {
+        console.log('✅ Login bem-sucedido:', result.user);
+        
+        Alert.alert(
+          'Sucesso!', 
+          `Bem-vindo(a), ${result.user.nome}!`,
+          [{ text: 'OK', onPress: closeModal }]
+        );
+      } else {
+        console.log('❌ Erro no login:', result.error);
+        Alert.alert('Erro', result.error || 'Falha no login');
+      }
+    } catch (error) {
+      console.error('❌ Erro inesperado no login:', error);
+      Alert.alert('Erro', 'Ocorreu um erro inesperado. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -147,14 +153,16 @@ const closeModal = () => {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-          <Image 
+            <Image 
               source={require('../assets/images/Logo.png')} 
               style={styles.logoImage}
               resizeMode="contain"
-          />      
-          <Text style={styles.subtitle}>Entre! O resto a gente entrega 😎  </Text>  
+            />      
+            
+            <Text style={styles.subtitle}>Entre! O resto a gente entrega 😎</Text>
+            
             <CustomInput
-              label="Email" // Título acima do input
+              label="Email"
               placeholder="Digite seu email"
               value={email}
               onChangeText={setEmail}
@@ -165,7 +173,7 @@ const closeModal = () => {
             />
             
             <CustomInput
-              label="Senha" // Título acima do input
+              label="Senha"
               placeholder="Digite sua senha"
               value={password}
               onChangeText={setPassword}
@@ -192,17 +200,19 @@ const closeModal = () => {
 };
 
 const styles = StyleSheet.create({
-   overlay: {
+  overlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#F03800',
+    backgroundColor: 'rgba(240, 56, 0, 0.8)',
   },
+  
   overlayTouch: {
     flex: 1,
   },
+  
   modalContainer: {
     position: 'absolute',
     bottom: 0,
@@ -211,11 +221,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopLeftRadius: 50,
     borderTopRightRadius: 50,
-    height: screenHeight * 0.80,
+    height: screenHeight * 0.85,
   },
+  
   keyboardView: {
     flex: 1,
   },
+  
   handle: {
     width: 80,
     height: 4,
@@ -224,14 +236,24 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 30,
   },
+  
   scrollContainer: {
     flex: 1,
   },
+  
   scrollContent: {
     padding: 24,
     paddingTop: 20,
     paddingBottom: 40,
   },
+  
+  logoImage: {
+    width: 299,
+    height: 189,
+    alignSelf: 'center',
+    marginTop: 20,
+  },
+  
   subtitle: {
     fontSize: 16,
     fontFamily: 'Nunito-Medium',
@@ -239,41 +261,17 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     color: '#4F0072',
   },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+  
+  customInputContainer: {
+    width: '100%',
+    marginBottom: 15,
   },
-  quickLoginButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 10,
-  },
-  quickButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  quickButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
+  
   loginButton: {
     width: '80%',
     alignSelf: 'center',
-  },
-  customInputContainer: {
-    width: '100%',
-  },
-  logoImage: {
-    width: 299,
-    height: 189,
-    alignSelf: 'center',
     marginTop: 20,
-  }
+  },
 });
 
 export default LoginModal;
