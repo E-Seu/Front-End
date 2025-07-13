@@ -5,13 +5,11 @@ import {
   Image
 } from 'react-native';
 import LoginModal from '../components/LoginModal';
-import RegisterModal from '../components/RegisterModal';
 import LinearGradient from  'react-native-linear-gradient';
 import CustomButton from '../components/CustomButton';
 
-const WelcomeScreen = () => {
+const WelcomeScreen = ({ navigation }) => {
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
 
   return (
  
@@ -36,7 +34,7 @@ const WelcomeScreen = () => {
             title="Criar Conta"
             variant="outline"
             size="small"
-            onPress={() => setShowRegisterModal(true)} // Abre modal de cadastro
+            onPress={() => navigation.navigate('Register')} // Navega para RegisterScreen
           />
         </View>
       </View>
@@ -45,12 +43,7 @@ const WelcomeScreen = () => {
       <LoginModal 
         visible={showLoginModal}
         onClose={() => setShowLoginModal(false)}
-      />
-
-      {/* Modal de Registro */}
-      <RegisterModal 
-        visible={showRegisterModal}
-        onClose={() => setShowRegisterModal(false)}
+        navigation={navigation}
       />
       </LinearGradient>
     </View>

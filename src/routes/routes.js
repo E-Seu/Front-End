@@ -5,6 +5,14 @@ import SplashScreen from '../screens/SplashScreen';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import RegisterCliente from '../screens/RegisterCliente';
+import RegisterEntregador from '../screens/RegisterEntregador';
+import RegisterRestauranteType from '../screens/RegisterRestauranteType';
+import RegisterRestauranteFixo from '../screens/RegisterRestauranteFixo';
+import RegisterRestauranteAmbulante from '../screens/RegisterRestauranteAmbulante';
+import RegisterRestauranteAmbulanteAluno from '../screens/RegisterRestauranteAmbulanteAluno';
+import RegisterRestauranteAmbulanteNaoAluno from '../screens/RegisterRestauranteAmbulanteNaoAluno';
+import RegisterSucessScreen from '../screens/RegisterSucessScreen';
 import AppLayout from '../components/AppLayout';
 import ClienteFavoritos from '../screens/cliente/ClienteFavoritos';
 import ClienteRestauranteDetalhes from '../screens/cliente/ClienteRestauranteDetalhes';
@@ -40,8 +48,15 @@ export default function Routes() {
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
+          <Stack.Screen name="RegisterCliente" component={RegisterCliente} />
+          <Stack.Screen name="RegisterEntregador" component={RegisterEntregador} />
+          <Stack.Screen name="RegisterRestauranteType" component={RegisterRestauranteType} />
+          <Stack.Screen name="RegisterRestauranteFixo" component={RegisterRestauranteFixo} />
+          <Stack.Screen name="RegisterRestauranteAmbulante" component={RegisterRestauranteAmbulante} />
+          <Stack.Screen name="RegisterRestauranteAmbulanteAluno" component={RegisterRestauranteAmbulanteAluno} />
+          <Stack.Screen name="RegisterRestauranteAmbulanteNaoAluno" component={RegisterRestauranteAmbulanteNaoAluno} />
+          <Stack.Screen name="RegisterSucess" component={RegisterSucessScreen} />
           <Stack.Screen name="Splash" component={SplashScreen} />
-
         </>
       ) : (
         // Rotas privadas (autenticado)
@@ -53,7 +68,6 @@ export default function Routes() {
           <Stack.Screen name="RestauranteDetalhes" component={ClienteRestauranteDetalhes} />
         </>
       )}
-
     </Stack.Navigator>
   );
 }

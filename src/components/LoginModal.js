@@ -21,7 +21,7 @@ import LoginService from '../services/LoginService';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
-const LoginModal = ({ visible, onClose }) => {
+const LoginModal = ({ visible, onClose, navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -63,26 +63,27 @@ const LoginModal = ({ visible, onClose }) => {
     }
   }, [visible]);
 
-  const closeModal = () => {
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: screenHeight,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(overlayOpacity, {
-        toValue: 0,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onClose();
-      setEmail('');
-      setPassword('');
-    });
-  };
+const closeModal = () => {
+  Animated.parallel([
+    Animated.timing(slideAnim, {
+      toValue: screenHeight,
+      duration: 400, // Aumentado de 250 para 400ms
+      useNativeDriver: true,
+    }),
+    Animated.timing(overlayOpacity, {
+      toValue: 0,
+      duration: 400, // Aumentado de 250 para 400ms
+      useNativeDriver: true,
+    }),
+  ]).start(() => {
+    onClose();
+    setEmail('');
+    setPassword('');
+  });
+};
 
-  const handleLogin = async () => {
+    const handleLogin = async () => {
+
     if (!email.trim() || !password.trim()) {
       Alert.alert('Erro', 'Por favor, preencha todos os campos');
       return;
@@ -112,6 +113,11 @@ const LoginModal = ({ visible, onClose }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRegisterPress = () => {
+    closeModal();
+    navigation.navigate('Register');
   };
 
   return (
@@ -192,6 +198,14 @@ const LoginModal = ({ visible, onClose }) => {
             >
               {loading && <ActivityIndicator color="white" />}
             </CustomButton>
+
+            {/* Texto de cadastro */}
+            <View style={styles.registerContainer}>
+              <Text style={styles.registerText}>Não possui uma conta? </Text>
+              <TouchableOpacity onPress={handleRegisterPress}>
+                <Text style={styles.registerLink}>Cadastre-se</Text>
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </Animated.View>
@@ -262,16 +276,50 @@ const styles = StyleSheet.create({
     color: '#4F0072',
   },
   
-  customInputContainer: {
-    width: '100%',
-    marginBottom: 15,
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
-  
+  quickLoginButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 10,
+  },
+  quickButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  quickButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   loginButton: {
     width: '80%',
     alignSelf: 'center',
-    marginTop: 20,
+    marginBottom: 20,
   },
+  
+  registerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  registerText: {
+    fontFamily: 'Nunito-Regular',
+    fontSize: 14,
+    color: '#888888',
+  },
+  registerLink: {
+    fontFamily: 'Nunito-Bold',
+    fontSize: 14,
+    color: '#EA9459',
+  },
+
 });
 
 export default LoginModal;
