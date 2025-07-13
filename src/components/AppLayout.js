@@ -43,10 +43,22 @@ const initialScreens = {
 
 const AppLayout = ({ userType = 'cliente' }) => {
   const [currentScreen, setCurrentScreen] = useState(initialScreens[userType]);
+  const [refreshData, setRefreshData] = useState({}); // ✅ Estado para forçar refresh
   
   // Função para trocar de tela
-  const navigateToScreen = (screenName) => {
-    setCurrentScreen(screenName);
+  const navigateToScreen = (screenName, params = {}) => {
+    console.log('🔄 AppLayout - Navegando para:', screenName, 'com parâmetros:', params);
+    
+    // Se estiver navegando para a mesma tela, forçar refresh
+    if (screenName === currentScreen) {
+      setRefreshData({
+        ...params,
+        timestamp: Date.now()
+      });
+    } else {
+      setCurrentScreen(screenName);
+      setRefreshData(params);
+    }
   };
 
   // Pega o componente da tela atual
@@ -55,7 +67,11 @@ const AppLayout = ({ userType = 'cliente' }) => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <CurrentScreenComponent navigateToScreen={navigateToScreen} />
+        <CurrentScreenComponent 
+          navigateToScreen={navigateToScreen}
+          refreshData={refreshData} // ✅ Passar dados de refresh
+          route={{ params: refreshData }} // ✅ Simular route.params
+        />
       </View>
       <NavBar tipo={userType} onNavigate={navigateToScreen} currentScreen={currentScreen} />
     </View>

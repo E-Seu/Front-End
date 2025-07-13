@@ -1,35 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
+import LoginService from '../services/LoginService';
 
 const AuthContext = createContext({});
-
-// Mock de usuários para teste
-const MOCK_USERS = [
-  // Cliente
-  {
-    id: 1,
-    nome: "João da Silva",
-    email: "joao@email.com",
-    senha: "123456",
-    type: 'cliente'
-  },
-  // Entregador
-  {
-    id: 3,
-    nome: "Maria Entregadora",
-    email: "maria@email.com",
-    senha: "123456",
-    type: 'entregador'
-  },
-
-    {
-    id: 3,
-    nome: 'Restaurante Sabor Caseiro',
-    email: 'saborcaseiro@email.com',
-    senha: '123',
-    type: 'restaurante',
-    restaurantId: 1 // ID do restaurante associado
-  }
-];
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -39,88 +11,76 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     
     try {
-      // Simula delay de rede
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('🔐 Fazendo login via API para:', email);
       
-      // Busca o usuário nos dados mock
-      const foundUser = MOCK_USERS.find(
-        u => u.email.toLowerCase() === email.toLowerCase() && u.senha === password
-      );
+      const result = await LoginService.login(email, password);
       
-      if (foundUser) {
-        // Remove a senha do objeto de usuário por segurança
-        const { senha: _, ...userWithoutPassword } = foundUser;
-        setUser(userWithoutPassword);
-        setLoading(false);
-        return { success: true, user: userWithoutPassword };
+      if (result.success) {
+        console.log('✅ Login bem-sucedido via API:', result.user);
+        setUser(result.user);
+        return { success: true, user: result.user };
       } else {
-        setLoading(false);
-        return { success: false, error: 'Email ou senha incorretos' };
+        console.log('❌ Falha no login via API:', result.error);
+        return { success: false, error: result.error };
       }
     } catch (error) {
-      setLoading(false);
+      console.error('❌ Erro inesperado no login:', error);
       return { success: false, error: 'Erro interno. Tente novamente.' };
+    } finally {
+      setLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
+  const logout = async () => {
+    setLoading(true);
+    
+    try {
+      console.log('🔓 Fazendo logout');
+      
+      await LoginService.logout();
+      setUser(null);
+      
+      console.log('✅ Logout realizado com sucesso');
+    } catch (error) {
+      console.error('❌ Erro no logout:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const register = async (userData) => {
     setLoading(true);
     
     try {
-      // Simula delay de rede
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('📝 Registrando usuário via API:', userData.email);
       
-      // Verifica se o email já existe
-      const emailExists = MOCK_USERS.some(
-        u => u.email.toLowerCase() === userData.email.toLowerCase()
-      );
+      const result = await LoginService.register(userData);
       
-      if (emailExists) {
-        setLoading(false);
-        return { success: false, error: 'Email já cadastrado' };
+      if (result.success) {
+        console.log('✅ Usuário registrado com sucesso via API:', result.user);
+        setUser(result.user);
+        return { success: true, user: result.user };
+      } else {
+        console.log('❌ Falha no registro via API:', result.error);
+        return { success: false, error: result.error };
       }
-      
-      // Simula criação de novo usuário
-      const newUser = {
-        id: MOCK_USERS.length + 1,
-        ...userData,
-      };
-      
-      const { senha: _, ...userWithoutPassword } = newUser;
-      setUser(userWithoutPassword);
-      setLoading(false);
-      return { success: true, user: userWithoutPassword };
-      
     } catch (error) {
-      setLoading(false);
+      console.error('❌ Erro inesperado no registro:', error);
       return { success: false, error: 'Erro interno. Tente novamente.' };
-    }
-  };
-
-  // Função para login rápido (para testes)
-  const quickLogin = (userType) => {
-    const user = MOCK_USERS.find(u => u.type === userType);
-    if (user) {
-      const { senha: _, ...userWithoutPassword } = user;
-      setUser(userWithoutPassword);
+    } finally {
+      setLoading(false);
     }
   };
 
   const value = {
     user,
-    userName: user?.nome, // Nome do usuário para exibir "Olá fulano!"
-    userType: user?.type,
+    userName: user?.nome,
+    userType: user?.papel,
     isAuthenticated: !!user,
     loading,
     login,
     logout,
-    register,
-    quickLogin,
-    mockUsers: MOCK_USERS.map(u => ({ email: u.email, type: u.type }))
+    register
   };
 
   return (
