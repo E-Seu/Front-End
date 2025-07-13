@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import RetornarIcon from '../assets/icons/retornarIcon';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
+import RegisterService from '../services/RegisterService';
 
 const RegisterEntregador = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -12,6 +13,7 @@ const RegisterEntregador = ({ navigation }) => {
     senha: '',
     confirmacaoSenha: '',
   });
+  const [loading, setLoading] = useState(false);
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -24,12 +26,59 @@ const RegisterEntregador = ({ navigation }) => {
     }));
   };
 
-  const handleConcluirCadastro = () => {
-    // Aqui você pode adicionar validações dos campos
-    console.log('Dados do cadastro de entregador:', formData);
-    
-    // Navegar para tela de sucesso
-    navigation.navigate('RegisterSucess');
+  const handleConcluirCadastro = async () => {
+    try {
+      setLoading(true);
+      
+      // Validar campos obrigatórios
+      const camposObrigatorios = ['nome', 'emailInstitucional', 'senha', 'confirmacaoSenha'];
+      const camposFaltando = RegisterService.validarCampos(formData, camposObrigatorios);
+      
+      if (camposFaltando.length > 0) {
+        Alert.alert('Erro', 'Preencha todos os campos obrigatórios');
+        return;
+      }
+      
+      // Validar email
+      if (!RegisterService.validarEmail(formData.emailInstitucional)) {
+        Alert.alert('Erro', 'Email inválido');
+        return;
+      }
+      
+      // Validar senha
+      if (!RegisterService.validarSenha(formData.senha)) {
+        Alert.alert('Erro', 'Senha deve ter pelo menos 6 caracteres');
+        return;
+      }
+      
+      // Verificar se senhas coincidem
+      if (!RegisterService.verificarSenhas(formData.senha, formData.confirmacaoSenha)) {
+        Alert.alert('Erro', 'Senhas não coincidem');
+        return;
+      }
+      
+      // Tentar registrar entregador
+      const resultado = await RegisterService.registrarEntregador({
+        nome: formData.nome,
+        email: formData.emailInstitucional,
+        senha: formData.senha
+      });
+      
+      if (resultado.success) {
+        console.log('✅ Entregador cadastrado com sucesso:', resultado.data);
+        
+        // Navegar para tela de sucesso
+        navigation.navigate('RegisterSucess');
+      } else {
+        Alert.alert('Erro', resultado.error || 'Erro ao cadastrar entregador');
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro inesperado:', error);
+      Alert.alert('Erro', 'Erro interno. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -108,6 +157,7 @@ const RegisterEntregador = ({ navigation }) => {
                 size="small"
                 onPress={handleConcluirCadastro}
                 style={styles.concluirButton}
+                disabled={loading}
               />
             </View>
           </ScrollView>
