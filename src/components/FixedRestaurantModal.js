@@ -9,10 +9,12 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity
+  TouchableOpacity,
+  Alert
 } from 'react-native';
 import CustomInput from './CustomInput';
 import CustomButton from './CustomButton';
+import RegisterService from '../services/RegisterService';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -22,6 +24,7 @@ const FixedRestaurantModal = ({ visible, onClose, formData, navigation }) => {
     horarioAbertura: '',
     horarioFechamento: '',
   });
+  const [loading, setLoading] = useState(false);
 
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -65,18 +68,73 @@ const FixedRestaurantModal = ({ visible, onClose, formData, navigation }) => {
     }));
   };
 
-  const handleConcluirCadastro = () => {
-    // Aqui você pode processar todos os dados do cadastro
-    const dadosCompletos = {
-      ...formData,
-      ...modalData
-    };
-    
-    console.log('Dados completos do cadastro:', dadosCompletos);
-    
-    // Fechar modal e navegar para tela de sucesso
-    onClose();
-    navigation.navigate('RegisterSucess');
+  const handleConcluirCadastro = async () => {
+    try {
+      setLoading(true);
+      
+      // Validar campos obrigatórios do formulário principal
+      const camposObrigatorios = ['nomeRestaurante', 'nomeResponsavel', 'email', 'senha', 'confirmacaoSenha'];
+      const camposFaltando = RegisterService.validarCampos(formData, camposObrigatorios);
+      
+      if (camposFaltando.length > 0) {
+        Alert.alert('Erro', 'Preencha todos os campos obrigatórios');
+        return;
+      }
+      
+      // Validar campos do modal
+      if (!modalData.localizacao || !modalData.horarioAbertura || !modalData.horarioFechamento) {
+        Alert.alert('Erro', 'Preencha todos os campos de localização e horário');
+        return;
+      }
+      
+      // Validar email
+      if (!RegisterService.validarEmail(formData.email)) {
+        Alert.alert('Erro', 'Email inválido');
+        return;
+      }
+      
+      // Validar senha
+      if (!RegisterService.validarSenha(formData.senha)) {
+        Alert.alert('Erro', 'Senha deve ter pelo menos 6 caracteres');
+        return;
+      }
+      
+      // Verificar se senhas coincidem
+      if (!RegisterService.verificarSenhas(formData.senha, formData.confirmacaoSenha)) {
+        Alert.alert('Erro', 'Senhas não coincidem');
+        return;
+      }
+      
+      // Tentar registrar restaurante
+      const resultado = await RegisterService.registrarRestaurante({
+        nome: formData.nomeRestaurante,
+        email: formData.email,
+        senha: formData.senha
+      });
+      
+      if (resultado.success) {
+        console.log('✅ Restaurante cadastrado com sucesso:', resultado.data);
+        
+        // Aqui você pode salvar os dados adicionais (localização, horários, etc.)
+        console.log('📦 Dados adicionais do restaurante:', {
+          ...modalData,
+          telefone: formData.telefone,
+          nomeResponsavel: formData.nomeResponsavel
+        });
+        
+        // Fechar modal e navegar para tela de sucesso
+        onClose();
+        navigation.navigate('RegisterSucess');
+      } else {
+        Alert.alert('Erro', resultado.error || 'Erro ao cadastrar restaurante');
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro inesperado:', error);
+      Alert.alert('Erro', 'Erro interno. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const closeModal = () => {
@@ -175,6 +233,7 @@ const FixedRestaurantModal = ({ visible, onClose, formData, navigation }) => {
               size="small"
               onPress={handleConcluirCadastro}
               style={styles.concluirButton}
+              disabled={loading}
             />
           </ScrollView>
         </KeyboardAvoidingView>
@@ -190,6 +249,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   overlayTouch: {
     flex: 1,
