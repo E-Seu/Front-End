@@ -1,97 +1,140 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import RetornarIcon from '../assets/icons/retornarIcon';
+import LinearGradient from 'react-native-linear-gradient';
 
 const RegisterScreen = ({ navigation }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const handleBackPress = () => {
+    navigation.goBack();
+  };
 
-  const handleRegister = () => {
-    // Por enquanto, apenas navega para Home
-    navigation.navigate('Home');
+  const handleUserTypeSelect = (userType) => {
+    console.log('Tipo de usuário selecionado:', userType);
+    
+    switch(userType) {
+      case 'cliente':
+        navigation.navigate('RegisterCliente');
+        break;
+      case 'entregador':
+        navigation.navigate('RegisterEntregador');
+        break;
+      case 'restaurante':
+        navigation.navigate('RegisterRestauranteType'); // Tela para escolher Fixo ou Ambulante
+        break;
+      default:
+        console.log('Tipo não reconhecido');
+    }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Cadastro</Text>
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Nome"
-        value={name}
-        onChangeText={setName}
-      />
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-      />
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      
-      <TouchableOpacity style={styles.button} onPress={handleRegister}>
-        <Text style={styles.buttonText}>Cadastrar</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.linkText}>Já tem conta? Faça login</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity onPress={() => navigation.navigate('Welcome')}>
-        <Text style={styles.linkText}>Voltar</Text>
-      </TouchableOpacity>
+        <SafeAreaView style={styles.safeArea}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={handleBackPress}
+            >
+              <RetornarIcon width={24} height={24} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Content */}
+          <View style={styles.content}>
+            <Text style={styles.title}>
+              Vamos começar! Primeiro, nos diga quem é você:
+            </Text>
+
+            <View style={styles.buttonsContainer}>
+              <TouchableOpacity 
+                style={styles.userTypeButton}
+                onPress={() => handleUserTypeSelect('cliente')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.userTypeText}>Cliente</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.userTypeButton}
+                onPress={() => handleUserTypeSelect('entregador')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.userTypeText}>Entregador</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.userTypeButton}
+                onPress={() => handleUserTypeSelect('restaurante')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.userTypeText}>Restaurante</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: '#FFFFFF',
     flex: 1,
+  },
+  background: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EEDCF9',
     justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#4F0072',
     textAlign: 'center',
-    marginBottom: 30,
-    color: '#333',
+    marginBottom: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 15,
-    marginBottom: 15,
-    borderRadius: 8,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: '#28a745',
-    padding: 15,
-    borderRadius: 8,
+  buttonsContainer: {
+    width: '100%',
     alignItems: 'center',
-    marginBottom: 15,
+    gap: 20,
+    marginBottom: 100,
   },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+  userTypeButton: {
+    width: 318,
+    height: 53,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#EA9459',
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  linkText: {
-    textAlign: 'center',
-    marginTop: 15,
-    color: '#007bff',
+  userTypeText: {
     fontSize: 16,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#F03800',
   },
 });
 

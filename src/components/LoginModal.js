@@ -20,7 +20,7 @@ import CustomInput from './CustomInput';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
-const LoginModal = ({ visible, onClose }) => {
+const LoginModal = ({ visible, onClose, navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
@@ -79,6 +79,7 @@ const closeModal = () => {
     setPassword('');
   });
 };
+
     const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
         Alert.alert('Erro', 'Por favor, preencha todos os campos');
@@ -106,6 +107,11 @@ const closeModal = () => {
   const fillUserData = (userEmail, userPassword) => {
     setEmail(userEmail);
     setPassword(userPassword);
+  };
+
+  const handleRegisterPress = () => {
+    closeModal();
+    navigation.navigate('Register');
   };
 
   return (
@@ -184,6 +190,14 @@ const closeModal = () => {
             >
               {loading && <ActivityIndicator color="white" />}
             </CustomButton>
+
+            {/* Texto de cadastro */}
+            <View style={styles.registerContainer}>
+              <Text style={styles.registerText}>Não possui uma conta? </Text>
+              <TouchableOpacity onPress={handleRegisterPress}>
+                <Text style={styles.registerLink}>Cadastre-se</Text>
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </Animated.View>
@@ -264,6 +278,7 @@ const styles = StyleSheet.create({
   loginButton: {
     width: '80%',
     alignSelf: 'center',
+    marginBottom: 20,
   },
   customInputContainer: {
     width: '100%',
@@ -273,7 +288,22 @@ const styles = StyleSheet.create({
     height: 189,
     alignSelf: 'center',
     marginTop: 20,
-  }
+  },
+  registerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  registerText: {
+    fontFamily: 'Nunito-Regular',
+    fontSize: 14,
+    color: '#888888',
+  },
+  registerLink: {
+    fontFamily: 'Nunito-Bold',
+    fontSize: 14,
+    color: '#EA9459',
+  },
 });
 
 export default LoginModal;
