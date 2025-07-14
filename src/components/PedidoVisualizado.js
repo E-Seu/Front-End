@@ -14,17 +14,13 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const PedidoVisualizado = ({
   onClose,
-  pedido = {},
-  restaurante = {},
-  entregador = {},
+  nomeRestaurante = 'Restaurante',
+  localizacao = 'Não informado',
+  precoTotal = 0,
+  status = '',
+  nomeEntregador = '',
+  itens = [],
 }) => {
-  const itens = pedido.itens || pedido.items || [];
-  const nomeRestaurante = restaurante.nome || pedido.nomeRestaurante || pedido.restaurante_nome || 'Restaurante';
-  const localizacao = pedido.localizacao || pedido.endereco || pedido.local || 'Não informado';
-  const precoTotal = pedido.preco_total || pedido.total || 0;
-  const status = pedido.status || '';
-  const nomeEntregador = entregador.nome || entregador.nome_entregador || pedido.entregador_nome || '';
-
   const renderItens = () => {
     if (!Array.isArray(itens) || itens.length === 0) {
       return (
@@ -46,6 +42,12 @@ const PedidoVisualizado = ({
 
   return (
     <View style={styles.overlay}>
+      {/* TouchableOpacity para fechar ao clicar fora */}
+      <TouchableOpacity
+        style={styles.overlayTouchable}
+        activeOpacity={1}
+        onPress={onClose}
+      />
       <View style={styles.modalContainer}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -101,6 +103,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  overlayTouchable: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 1,
+  },
   modalContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
@@ -115,6 +127,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     overflow: 'hidden',
+    zIndex: 2,
   },
   keyboardView: {
     flex: 1,

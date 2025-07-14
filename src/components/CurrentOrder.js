@@ -76,9 +76,12 @@ const CurrentOrder = ({
       >
         <PedidoVisualizado
           onClose={() => setModalVisible(false)}
-          pedido={pedido}
-          restaurante={restaurante}
-          entregador={entregador}
+          nomeRestaurante={nomeRestaurante}
+          localizacao={pedido.localizacao || pedido.endereco || pedido.local || 'Não informado'}
+          precoTotal={pedido.preco_total || pedido.total || 0}
+          status={status}
+          nomeEntregador={entregador.nome || entregador.nome_entregador || pedido.entregador_nome || ''}
+          itens={pedido.itens || pedido.items || []}
         />
       </Modal>
     </View>
