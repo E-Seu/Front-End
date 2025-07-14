@@ -1,16 +1,22 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import RelogioIcon from '../assets/icons/relogioIcon';
+import PedidoVisualizado from './PedidoVisualizado';
 
 const CurrentOrder = ({ 
   horario = "hora",
   nomeRestaurante = "Restaurante Exemplo",
   primeiroItem = "item exemplo",
   status = "",
+  pedido = {},
+  restaurante = {},
+  entregador = {},
   onVisualizarPress
 }) => {
-  
+  const [modalVisible, setModalVisible] = useState(false);
+
   const handleVisualizarPress = () => {
+    setModalVisible(true);
     if (onVisualizarPress) {
       onVisualizarPress();
     }
@@ -29,40 +35,54 @@ const CurrentOrder = ({
     }
   };
 
-return (
-  <View style={styles.container}>
-    <View style={styles.content}>
-      {/* Lado esquerdo - Informações do pedido */}
-      <View style={styles.infoContainer}>
-        <View style={styles.horarioContainer}>
-          <Text style={styles.pedidoFeitoText}>Pedido feito às </Text>
-          <Text style={styles.horarioText}>{horario}</Text>
+  return (
+    <View style={styles.container}>
+      <View style={styles.content}>
+        {/* Lado esquerdo - Informações do pedido */}
+        <View style={styles.infoContainer}>
+          <View style={styles.horarioContainer}>
+            <Text style={styles.pedidoFeitoText}>Pedido feito às </Text>
+            <Text style={styles.horarioText}>{horario}</Text>
+          </View>
+          <Text style={styles.nomeRestaurante}>{nomeRestaurante}</Text>
+          <Text style={styles.primeiroItem} numberOfLines={1}>
+            {primeiroItem}...
+          </Text>
         </View>
-        <Text style={styles.nomeRestaurante}>{nomeRestaurante}</Text>
-        <Text style={styles.primeiroItem} numberOfLines={1}>
-          {primeiroItem}...
-        </Text>
-      </View>
 
-      {/* Lado direito - Ícone, status e botão */}
-      <View style={styles.rightContainer}>
-        <View style={styles.statusRelogioContainer}>
-          {status ? (
-            <Text style={styles.statusText}>{getStatusLabel(status)}</Text>
-          ) : null}
-          <RelogioIcon width={25} height={25} style={{ marginLeft: 4 }} />
+        {/* Lado direito - Ícone, status e botão */}
+        <View style={styles.rightContainer}>
+          <View style={styles.statusRelogioContainer}>
+            {status ? (
+              <Text style={styles.statusText}>{getStatusLabel(status)}</Text>
+            ) : null}
+            <RelogioIcon width={25} height={25} style={{ marginLeft: 4 }} />
+          </View>
+          <TouchableOpacity 
+            style={styles.visualizarButton}
+            onPress={handleVisualizarPress}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.visualizarText}>Visualizar Pedido</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity 
-          style={styles.visualizarButton}
-          onPress={handleVisualizarPress}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.visualizarText}>Visualizar Pedido</Text>
-        </TouchableOpacity>
       </View>
+      {/* Modal de visualização do pedido */}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <PedidoVisualizado
+          onClose={() => setModalVisible(false)}
+          pedido={pedido}
+          restaurante={restaurante}
+          entregador={entregador}
+        />
+      </Modal>
     </View>
-  </View>
-);
+  );
 };
 
 const styles = StyleSheet.create({
@@ -114,10 +134,10 @@ const styles = StyleSheet.create({
   },
 
   statusText: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Nunito-Bold',
     color: '#4E0777',
-    marginLeft: 6,
+    marginRight: 8,
   },
 
   nomeRestaurante: {
@@ -150,16 +170,10 @@ const styles = StyleSheet.create({
     color: '#4E0777',
   },
 
-   statusRelogioContainer: {
+  statusRelogioContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
-  },
-  statusText: {
-    fontSize: 16,
-    fontFamily: 'Nunito-Bold',
-    color: '#4E0777',
-    marginRight: 8,
   },
 });
 
