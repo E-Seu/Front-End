@@ -23,6 +23,7 @@ const FixedRestaurantModal = ({ visible, onClose, formData, navigation }) => {
     localizacao: '',
     horarioAbertura: '',
     horarioFechamento: '',
+    info: '', // ✅ Adicionado campo info
   });
   const [loading, setLoading] = useState(false);
 
@@ -77,7 +78,7 @@ const FixedRestaurantModal = ({ visible, onClose, formData, navigation }) => {
       const camposFaltando = RegisterService.validarCampos(formData, camposObrigatorios);
       
       if (camposFaltando.length > 0) {
-        Alert.alert('Erro', 'Preencha todos os campos obrigatórios');
+        Alert.alert('Erro', 'Preencha todos os campos obrigatórios do formulário principal');
         return;
       }
       
@@ -105,21 +106,32 @@ const FixedRestaurantModal = ({ visible, onClose, formData, navigation }) => {
         return;
       }
       
-      // Tentar registrar restaurante
-      const resultado = await RegisterService.registrarRestaurante({
+      // ✅ Preparar dados completos para o registro
+      const dadosCompletos = {
         nome: formData.nomeRestaurante,
         email: formData.email,
-        senha: formData.senha
-      });
+        senha: formData.senha,
+        info: modalData.info || formData.nomeRestaurante, // ✅ Usar info ou nome como fallback
+        local: modalData.localizacao, // ✅ Mapear localizacao para local
+        horario_abertura: modalData.horarioAbertura, // ✅ Mapear horarioAbertura
+        horario_fechamento: modalData.horarioFechamento, // ✅ Mapear horarioFechamento
+        telefone: formData.telefone || null,
+        tipo: 'fixo' // ✅ Definir tipo como fixo
+      };
+      
+      console.log('📦 Dados enviados para registro:', dadosCompletos);
+      
+      // Tentar registrar restaurante
+      const resultado = await RegisterService.registrarRestaurante(dadosCompletos);
       
       if (resultado.success) {
         console.log('✅ Restaurante cadastrado com sucesso:', resultado.data);
         
-        // Aqui você pode salvar os dados adicionais (localização, horários, etc.)
+        // Dados adicionais salvos com sucesso
         console.log('📦 Dados adicionais do restaurante:', {
-          ...modalData,
-          telefone: formData.telefone,
-          nomeResponsavel: formData.nomeResponsavel
+          nomeResponsavel: formData.nomeResponsavel,
+          tipo: 'fixo',
+          dadosCompletos: dadosCompletos
         });
         
         // Fechar modal e navegar para tela de sucesso
@@ -195,6 +207,17 @@ const FixedRestaurantModal = ({ visible, onClose, formData, navigation }) => {
             </Text>
 
             <View style={styles.formContainer}>
+              {/* ✅ Adicionado campo Info/Descrição */}
+              <CustomInput
+                label="Descrição do Restaurante"
+                placeholder="Descreva seu restaurante brevemente"
+                value={modalData.info}
+                onChangeText={(value) => handleInputChange('info', value)}
+                multiline={true}
+                numberOfLines={3}
+                style={styles.infoInput}
+              />
+
               <CustomInput
                 label="Localização do Restaurante"
                 placeholder="Digite a localização do restaurante"
@@ -283,6 +306,10 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     marginBottom: 30,
+  },
+  infoInput: {
+    marginBottom: 16,
+    minHeight: 80, // ✅ Maior altura para campo de descrição
   },
   horarioLabel: {
     fontSize: 14,
