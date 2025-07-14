@@ -86,20 +86,85 @@ class RestaurantService {
     };
   }
 
-  // Método para normalizar dados do produto
+  // Método para normalizar dados do produto  // ✅ CORREÇÃO: Normalização considerando que API usa 'preco' não 'valor'
   static normalizeProductData(product) {
-    return {
+    let valorNormalizado;
+    
+    // ✅ CORREÇÃO: API retorna 'preco', não 'valor'
+    const precoFromApi = product.preco || product.valor; // Tentar ambos para compatibilidade
+    
+    if (precoFromApi === null || precoFromApi === undefined) {
+      valorNormalizado = 0;
+    } else if (typeof precoFromApi === 'string') {
+      valorNormalizado = parseFloat(precoFromApi);
+    } else if (typeof precoFromApi === 'number') {
+      valorNormalizado = precoFromApi;
+    } else if (typeof precoFromApi === 'object' && precoFromApi !== null) {
+      // Para Decimal do Python/FastAPI
+      valorNormalizado = parseFloat(precoFromApi.toString());
+    } else {
+      valorNormalizado = 0;
+    }
+    
+    // Verificar se a conversão foi bem-sucedida
+    if (isNaN(valorNormalizado)) {
+      valorNormalizado = 0;
+    }
+    
+    const normalized = {
       ...product,
       id: product.produto_id,
       produto_id: product.produto_id,
-      // Converter valor de string para number
-      valor: typeof product.valor === 'string' ? parseFloat(product.valor) : product.valor,
+      // ✅ CORREÇÃO: Mapear 'preco' da API para 'valor' do frontend
+      valor: valorNormalizado,
+      preco: valorNormalizado, // Manter ambos para compatibilidade
       // Garantir que disponivel seja boolean
       disponivel: product.disponivel !== undefined ? product.disponivel : true,
       // Garantir que selos seja objeto
-      selos: product.selos || {}
+      selos: product.selos || {},
+      // Garantir que tempo_preparo seja number
+      tempo_preparo: parseInt(product.tempo_preparo) || 30
     };
+    
+    return normalized;
   }
+
+// ✅ CORREÇÃO: Adicionar produto com valor como string
+static async addProduct(restaurantId, productData) {
+  try {
+    console.log(`🔄 Adicionando produto ao restaurante ${restaurantId}:`, productData);
+    
+    // Estrutura esperada pela API com valores corretos
+    const apiProductData = {
+      nome: productData.nome,
+      descricao: productData.descricao,
+      valor: parseFloat(productData.valor).toFixed(2), // ✅ String com 2 decimais
+      tempo_preparo: productData.tempo_preparo || 30,
+      disponivel: productData.disponivel !== undefined ? productData.disponivel : true,
+      selos: productData.selos || {
+        sem_lactose: false,
+        sem_gluten: false,
+        sem_amendoim: false,
+        vegano: false
+      }
+    };
+    
+    console.log('📦 Dados formatados para API:', apiProductData);
+    
+    const response = await apiClient.post(`/restaurantes/${restaurantId}/produto`, apiProductData);
+    
+    console.log(`✅ Produto adicionado:`, response.data);
+    return this.normalizeProductData(response.data);
+  } catch (error) {
+    console.error(`❌ Erro ao adicionar produto ao restaurante ${restaurantId}:`, error.message);
+    
+    if (error.response) {
+      console.error('📡 Detalhes do erro:', error.response.data);
+    }
+    
+    return null;
+  }
+}
 
   // Método de teste de conexão
   static async testConnection() {

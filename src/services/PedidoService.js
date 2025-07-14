@@ -58,7 +58,56 @@ class PedidoService {
     };
   }
 
-  // Método de teste de conexão para pedidos
+  // ✅ CORREÇÃO: Método para listar pedidos do cliente (usado pelo ClientePedidos.js)
+  static async listarPedidosCliente(clienteId) {
+    try {
+      console.log(`🔄 Buscando pedidos do cliente ${clienteId}...`);
+      
+      // ✅ Usar rota correta da API: GET /pedidos/historico/{usuario_id}
+      const response = await apiClient.get(`/pedidos/historico/${clienteId}`);
+      const normalizedData = response.data.map(pedido => this.normalizePedidoData(pedido));
+      
+      console.log(`✅ Pedidos do cliente ${clienteId} carregados:`, normalizedData.length, 'pedidos');
+      
+      // ✅ Adicionar ao cache para acesso offline
+      this._pedidosCache = normalizedData;
+      
+      return normalizedData;
+    } catch (error) {
+      console.log(`📦 Erro ao buscar pedidos do cliente ${clienteId}, usando cache:`, error.message);
+      
+      // Filtrar pedidos do cache para o cliente específico
+      const pedidosDoCliente = this._pedidosCache.filter(
+        pedido => pedido.cliente_id === parseInt(clienteId)
+      );
+      
+      console.log('📦 Pedidos encontrados no cache:', pedidosDoCliente.length);
+      
+      return pedidosDoCliente;
+    }
+  }
+
+  // ✅ CORREÇÃO: Método para buscar pedido específico (usado pelo ClientePedidos.js)
+  static async buscarPedido(pedidoId) {
+    try {
+      console.log(`🔄 Buscando pedido ${pedidoId}...`);
+      
+      // ✅ Usar rota correta da API: GET /pedidos/{id}
+      const response = await apiClient.get(`/pedidos/${pedidoId}`);
+      const normalizedData = this.normalizePedidoData(response.data);
+      
+      console.log(`✅ Pedido ${pedidoId} encontrado:`, normalizedData);
+      return normalizedData;
+    } catch (error) {
+      console.log(`📦 Erro ao buscar pedido ${pedidoId}, tentando cache:`, error.message);
+      
+      // Tentar encontrar no cache
+      const pedido = this._pedidosCache.find(p => p.pedido_id === parseInt(pedidoId));
+      return pedido ? this.normalizePedidoData(pedido) : null;
+    }
+  }
+
+  // ✅ Método de teste de conexão para pedidos
   static async testConnection() {
     try {
       console.log('🔍 Testando conexão com a API de pedidos...');
@@ -88,51 +137,17 @@ class PedidoService {
     }
   }
 
-  // Acompanhar pedido específico
+  // ✅ Acompanhar pedido específico (mantém nome original para compatibilidade)
   static async acompanharPedido(pedidoId) {
-    try {
-      console.log(`🔄 Buscando pedido ${pedidoId}...`);
-      
-      const response = await apiClient.get(`/pedidos/${pedidoId}`);
-      const normalizedData = this.normalizePedidoData(response.data);
-      
-      console.log(`✅ Pedido ${pedidoId} encontrado:`, normalizedData);
-      return normalizedData;
-    } catch (error) {
-      console.log(`📦 Erro ao buscar pedido ${pedidoId}, tentando cache:`, error.message);
-      
-      // Tentar encontrar no cache
-      const pedido = this._pedidosCache.find(p => p.pedido_id === parseInt(pedidoId));
-      return pedido ? this.normalizePedidoData(pedido) : null;
-    }
+    return this.buscarPedido(pedidoId);
   }
 
-  // Histórico de pedidos do usuário
+  // ✅ Histórico de pedidos do usuário (mantém nome original para compatibilidade)
   static async historicoPedidos(usuarioId) {
-    try {
-      console.log(`🔄 Buscando histórico para usuário ${usuarioId}...`);
-      
-      const response = await apiClient.get(`/pedidos/historico/${usuarioId}`);
-      const normalizedData = response.data.map(pedido => this.normalizePedidoData(pedido));
-      
-      console.log(`✅ Histórico do usuário ${usuarioId} carregado:`, normalizedData.length, 'pedidos');
-      return normalizedData;
-    } catch (error) {
-      console.log(`📦 Erro ao buscar histórico do usuário ${usuarioId}, usando cache:`, error.message);
-      
-      // Filtrar pedidos do cache para o usuário específico
-      const pedidosDoUsuario = this._pedidosCache.filter(
-        pedido => pedido.cliente_id === parseInt(usuarioId)
-      );
-      
-      console.log('📦 Pedidos encontrados no cache:', pedidosDoUsuario.length);
-      console.log('📦 Cache completo:', this._pedidosCache);
-      
-      return pedidosDoUsuario.map(pedido => this.normalizePedidoData(pedido));
-    }
+    return this.listarPedidosCliente(usuarioId);
   }
 
-  // Criar novo pedido
+  // ✅ Criar novo pedido
   static async criarPedido(pedidoData) {
     try {
       console.log('🔄 Criando pedido (dados recebidos):', JSON.stringify(pedidoData, null, 2));
@@ -148,15 +163,15 @@ class PedidoService {
         throw new Error('localizacao é obrigatória');
       }
       
-      // Estrutura esperada pela API seguindo o schema PedidoBase
+      // ✅ Estrutura correta para API FastAPI usando PedidoBase
       const apiPedidoData = {
         cliente_id: parseInt(pedidoData.cliente_id),
         restaurante_id: parseInt(pedidoData.restaurante_id),
         entregador_id: pedidoData.entregador_id ? parseInt(pedidoData.entregador_id) : null,
         status: pedidoData.status || "aguardando",
-        preco_total: parseFloat(pedidoData.preco_total || 0),
+        preco_total: parseFloat(pedidoData.preco_total || 0).toFixed(2),
         localizacao: String(pedidoData.localizacao),
-        data_hora: new Date().toISOString(), // ✅ Sempre gerar nova data
+        data_hora: new Date().toISOString(),
         observacao: pedidoData.observacao ? String(pedidoData.observacao) : null
       };
       
@@ -165,22 +180,25 @@ class PedidoService {
       // Verificar se todos os campos obrigatórios estão presentes
       const requiredFields = ['cliente_id', 'restaurante_id', 'status', 'preco_total', 'localizacao', 'data_hora'];
       const missingFields = requiredFields.filter(field => 
-        apiPedidoData[field] === undefined || apiPedidoData[field] === null || apiPedidoData[field] === ''
+        apiPedidoData[field] === undefined || 
+        apiPedidoData[field] === null || 
+        apiPedidoData[field] === '' ||
+        (field === 'preco_total' && parseFloat(apiPedidoData[field]) < 0)
       );
       
       if (missingFields.length > 0) {
-        console.error('❌ Campos obrigatórios ausentes:', missingFields);
-        throw new Error(`Campos obrigatórios ausentes: ${missingFields.join(', ')}`);
+        console.error('❌ Campos obrigatórios ausentes/inválidos:', missingFields);
+        throw new Error(`Campos obrigatórios ausentes/inválidos: ${missingFields.join(', ')}`);
       }
       
       try {
-        // Tentar criar pedido na API
+        // ✅ Tentar criar pedido na API usando POST /pedidos
         const response = await apiClient.post('/pedidos', apiPedidoData);
         const normalizedData = this.normalizePedidoData(response.data);
         
         console.log('✅ Pedido criado com sucesso na API:', normalizedData);
         
-        // Adicionar ao cache também
+        // ✅ Adicionar ao cache para aparecer imediatamente
         this._pedidosCache.push(normalizedData);
         console.log('📦 Pedido adicionado ao cache. Total no cache:', this._pedidosCache.length);
         
@@ -188,11 +206,29 @@ class PedidoService {
       } catch (apiError) {
         console.log('❌ Erro na API, salvando no cache local:', apiError.message);
         
-        // Se a API falhar, salvar no cache local
+        if (apiError.response) {
+          console.error('📡 Status do erro:', apiError.response.status);
+          console.error('📡 Dados do erro:', JSON.stringify(apiError.response.data, null, 2));
+          
+          // Tentar extrair detalhes do erro 422
+          if (apiError.response.status === 422) {
+            console.error('🔍 Erro de validação (422):', JSON.stringify(apiError.response.data, null, 2));
+            
+            // Mostrar campos que faltam
+            if (apiError.response.data.detail) {
+              apiError.response.data.detail.forEach(err => {
+                console.error(`❌ Campo: ${err.loc.join('.')} - Erro: ${err.msg}`);
+              });
+            }
+          }
+        }
+        
+        // ✅ Mesmo com erro da API, criar no cache local para teste
         const novoPedido = {
           ...apiPedidoData,
           pedido_id: Date.now(), // ID temporário baseado no timestamp
-          id: Date.now()
+          id: Date.now(),
+          preco_total: parseFloat(apiPedidoData.preco_total) // Converter de volta para number no cache
         };
         
         const normalizedData = this.normalizePedidoData(novoPedido);
@@ -206,34 +242,16 @@ class PedidoService {
       }
     } catch (error) {
       console.error('❌ Erro ao criar pedido:', error.message);
-      
-      if (error.response) {
-        console.error('📡 Status do erro:', error.response.status);
-        console.error('📡 Dados do erro:', JSON.stringify(error.response.data, null, 2));
-        
-        // Tentar extrair detalhes do erro 422
-        if (error.response.status === 422) {
-          console.error('🔍 Erro de validação (422):', JSON.stringify(error.response.data, null, 2));
-          
-          // Mostrar campos que faltam
-          if (error.response.data.detail) {
-            error.response.data.detail.forEach(err => {
-              console.error(`❌ Campo: ${err.loc.join('.')} - Erro: ${err.msg}`);
-            });
-          }
-        }
-      }
-      
       throw error; // Re-throw para que o CartModal possa tratar
     }
   }
 
-  // Atualizar status do pedido
+  // ✅ Atualizar status do pedido
   static async atualizarStatusPedido(pedidoId, novoStatus) {
     try {
       console.log(`🔄 Atualizando status do pedido ${pedidoId} para ${novoStatus}...`);
       
-      // CORRIGIDO: Usar query parameter como no backend
+      // ✅ Usar query parameter como definido na API: PUT /pedidos/{id}/status?status={status}
       const response = await apiClient.put(`/pedidos/${pedidoId}/status?status=${novoStatus}`);
       
       console.log(`✅ Status do pedido ${pedidoId} atualizado:`, response.data);
@@ -260,11 +278,12 @@ class PedidoService {
     }
   }
 
-  // Cancelar pedido
+  // ✅ Cancelar pedido
   static async cancelarPedido(pedidoId) {
     try {
       console.log(`🔄 Cancelando pedido ${pedidoId}...`);
       
+      // ✅ Usar rota correta da API: PUT /pedidos/{id}/cancelar
       const response = await apiClient.put(`/pedidos/${pedidoId}/cancelar`);
       
       console.log(`✅ Pedido ${pedidoId} cancelado:`, response.data);
@@ -291,7 +310,7 @@ class PedidoService {
     }
   }
 
-  // Formatar data para exibição
+  // ✅ Formatar data para exibição
   static formatarDataHora(dataHora) {
     try {
       const data = new Date(dataHora);
@@ -315,7 +334,7 @@ class PedidoService {
     }
   }
 
-  // Mapear status para português
+  // ✅ Mapear status para português
   static mapearStatus(status) {
     const statusMap = {
       'aguardando': 'Aguardando',
@@ -329,13 +348,13 @@ class PedidoService {
     return statusMap[status] || status;
   }
 
-  // Verificar se o pedido está em andamento
+  // ✅ Verificar se o pedido está em andamento
   static isPedidoAtivo(status) {
     const statusAtivos = ['aguardando', 'em preparo', 'pronto', 'a caminho'];
     return statusAtivos.includes(status);
   }
 
-  // Calcular tempo estimado baseado no status
+  // ✅ Calcular tempo estimado baseado no status
   static calcularTempoEstimado(status, dataPedido) {
     try {
       const agora = new Date();
@@ -360,24 +379,6 @@ class PedidoService {
     } catch (error) {
       console.error('❌ Erro ao calcular tempo estimado:', error);
       return { tempoRestante: 0, tempoTotal: 0, progresso: 0 };
-    }
-  }
-
-  // Buscar pedidos por restaurante (para proprietários)
-  static async getPedidosByRestaurante(restauranteId) {
-    try {
-      console.log(`🔄 Buscando pedidos do restaurante ${restauranteId}...`);
-      
-      const response = await apiClient.get(`/restaurantes/${restauranteId}/pedidos`);
-      const normalizedData = response.data.map(pedido => this.normalizePedidoData(pedido));
-      
-      console.log(`✅ Pedidos do restaurante ${restauranteId} carregados:`, normalizedData.length);
-      return normalizedData;
-    } catch (error) {
-      console.log(`📦 Erro ao buscar pedidos do restaurante ${restauranteId}, usando cache:`, error.message);
-      
-      const pedidos = this._pedidosCache.filter(p => p.restaurante_id === parseInt(restauranteId));
-      return pedidos.map(pedido => this.normalizePedidoData(pedido));
     }
   }
 
@@ -412,13 +413,13 @@ class PedidoService {
     return null;
   }
 
-  // Método utilitário para configurar URL da API dinamicamente
+  // ✅ Método utilitário para configurar URL da API dinamicamente
   static setApiUrl(url) {
     apiClient.defaults.baseURL = url;
     console.log(`🔧 URL da API de pedidos alterada para: ${url}`);
   }
 
-  // Método para verificar status da API
+  // ✅ Método para verificar status da API
   static async checkApiStatus() {
     try {
       const response = await apiClient.get('/');

@@ -106,7 +106,7 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
     return products.filter(product => {
       // Filtro por preço máximo
       if (filters.maxPrice !== null && filters.maxPrice !== undefined) {
-        const productPrice = parseFloat(product.valor);
+        const productPrice = parseFloat(product.valor || product.preco);
         if (productPrice > filters.maxPrice) {
           return false;
         }
@@ -307,7 +307,7 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
         restaurante_id={item.restaurante_id || restaurantId}
         nome={item.nome}
         descricao={item.descricao}
-        valor={item.valor}
+        valor={item.valor || item.preco}
         tempo_preparo={item.tempo_preparo}
         disponivel={item.disponivel}
         selos={item.selos}

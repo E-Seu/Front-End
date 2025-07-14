@@ -36,22 +36,125 @@ const CartModal = ({
   const [loading, setLoading] = useState(false);
   const [pedidoCriado, setPedidoCriado] = useState(null);
 
-  console.log('📦 CartModal restaurantId:', restaurantId);
-  console.log('📦 CartModal tipo do restaurantId:', typeof restaurantId);
-
-  // Função para calcular o total
-  const calculateTotal = () => {
-    if (!cartItems || !produtos) return 0;
-    
-    let total = 0;
-    Object.entries(cartItems).forEach(([productId, quantidade]) => {
-      const produto = produtos.find(p => (p.id || p.produto_id).toString() === productId);
-      if (produto) {
-        total += produto.valor * quantidade;
+// Função para calcular o total
+const calculateTotal = () => {
+  if (!cartItems || !produtos) return 0;
+  
+  let total = 0;
+  Object.entries(cartItems).forEach(([productId, quantidade]) => {
+    const produto = produtos.find(p => (p.id || p.produto_id).toString() === productId);
+    if (produto) {
+      // ✅ CORREÇÃO: Garantir que valor seja tratado corretamente
+      let valorProduto;
+      
+      // Tentar valor primeiro, depois preco
+      const precoRaw = produto.valor || produto.preco;
+      
+      if (typeof precoRaw === 'string') {
+        valorProduto = parseFloat(precoRaw);
+      } else if (typeof precoRaw === 'object' && precoRaw !== null) {
+        valorProduto = parseFloat(precoRaw.toString());
+      } else {
+        valorProduto = parseFloat(precoRaw) || 0;
       }
-    });
-    return total;
-  };
+      
+      if (!isNaN(valorProduto)) {
+        total += valorProduto * quantidade;
+      } else {
+        console.warn('⚠️ Valor inválido do produto:', produto.nome, 'valor:', produto.valor, 'preco:', produto.preco);
+      }
+    }
+  });
+  
+  return total;
+};
+
+// ✅ CORREÇÃO: Validação adicional antes de criar pedido
+const handleFinalizarPedido = async () => {
+  if (!hasItemsInCart()) {
+    Alert.alert('Erro', 'Carrinho vazio! Adicione itens antes de finalizar.');
+    return;
+  }
+
+  if (!localEntrega.trim()) {
+    Alert.alert('Erro', 'Por favor, informe o local de entrega.');
+    return;
+  }
+
+  if (!restaurantId) {
+    Alert.alert('Erro', 'ID do restaurante não encontrado. Não é possível finalizar o pedido.');
+    return;
+  }
+
+  const total = calculateTotal();
+  if (total <= 0) {
+    Alert.alert('Erro', 'Total do pedido deve ser maior que zero.');
+    return;
+  }
+
+  try {
+    setLoading(true);
+    console.log('🛒 Iniciando criação do pedido...');
+
+    // Obter dados do usuário logado
+    const currentUser = await LoginService.getCurrentUser();
+    if (!currentUser.success) {
+      Alert.alert('Erro', 'Usuário não encontrado. Faça login novamente.');
+      return;
+    }
+
+    const itensCarrinho = getCartItemsWithDetails();
+    const clienteId = currentUser.user.id || currentUser.user.usuario_id;
+
+    // ✅ DADOS VALIDADOS para o pedido
+    const pedidoData = {
+      cliente_id: clienteId,
+      restaurante_id: parseInt(restaurantId),
+      entregador_id: null,
+      status: "aguardando",
+      preco_total: total, // Será convertido para string com 2 decimais no PedidoService
+      localizacao: localEntrega.trim(),
+      data_hora: new Date().toISOString(),
+      observacao: criarObservacaoComItens()
+    };
+
+    console.log('📦 Dados finais do pedido:', pedidoData);
+    console.log('👤 Cliente ID:', clienteId);
+    console.log('🏪 Restaurante ID:', restaurantId);
+    console.log('💰 Total validado:', total);
+    console.log('📍 Local:', localEntrega);
+    console.log('🛒 Itens:', itensCarrinho);
+
+    // Criar pedido via API
+    const novoPedido = await PedidoService.criarPedido(pedidoData);
+
+    if (novoPedido) {
+      console.log('✅ Pedido criado com sucesso:', novoPedido);
+      
+      // Salvar dados do pedido criado
+      setPedidoCriado(novoPedido);
+      
+      // Fechar modal do carrinho primeiro
+      onClose();
+      
+      // Limpar campos
+      setLocalEntrega('');
+      
+      // Pequeno delay para garantir que o pedido foi salvo
+      setTimeout(() => {
+        setShowCompletedModal(true);
+      }, 100);
+      
+    } else {
+      Alert.alert('Erro', 'Falha ao criar pedido. Tente novamente.');
+    }
+  } catch (error) {
+    console.error('❌ Erro ao finalizar pedido:', error);
+    Alert.alert('Erro', `Ocorreu um erro ao finalizar o pedido: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Função para obter itens do carrinho com detalhes
   const getCartItemsWithDetails = () => {
@@ -60,12 +163,15 @@ const CartModal = ({
     return Object.entries(cartItems).map(([productId, quantidade]) => {
       const produto = produtos.find(p => (p.id || p.produto_id).toString() === productId);
       if (produto) {
+        // ✅ CORREÇÃO: Usar valor ou preco
+        const valorProduto = produto.valor || produto.preco || 0;
+        
         return {
           id: productId,
           nome: produto.nome,
-          valor: produto.valor,
+          valor: valorProduto,
           quantidade: quantidade,
-          subtotal: produto.valor * quantidade
+          subtotal: valorProduto * quantidade
         };
       }
       return null;
@@ -85,86 +191,6 @@ const CartModal = ({
     ).join('; ');
     
     return observacao;
-  };
-
-  const handleFinalizarPedido = async () => {
-    if (!hasItemsInCart()) {
-      Alert.alert('Erro', 'Carrinho vazio! Adicione itens antes de finalizar.');
-      return;
-    }
-
-    if (!localEntrega.trim()) {
-      Alert.alert('Erro', 'Por favor, informe o local de entrega.');
-      return;
-    }
-
-    if (!restaurantId) {
-      Alert.alert('Erro', 'ID do restaurante não encontrado. Não é possível finalizar o pedido.');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      console.log('🛒 Iniciando criação do pedido...');
-
-      // Obter dados do usuário logado
-      const currentUser = await LoginService.getCurrentUser();
-      if (!currentUser.success) {
-        Alert.alert('Erro', 'Usuário não encontrado. Faça login novamente.');
-        return;
-      }
-
-      const itensCarrinho = getCartItemsWithDetails();
-      const total = calculateTotal();
-      const clienteId = currentUser.user.id || currentUser.user.usuario_id;
-
-      // Dados do pedido para enviar à API
-      const pedidoData = {
-        cliente_id: clienteId,
-        restaurante_id: parseInt(restaurantId),
-        entregador_id: null,
-        status: "aguardando",
-        preco_total: total,
-        localizacao: localEntrega.trim(),
-        data_hora: new Date().toISOString(),
-        observacao: criarObservacaoComItens()
-      };
-
-      console.log('📦 Dados do pedido a ser criado:', pedidoData);
-      console.log('👤 Cliente ID:', clienteId);
-      console.log('🏪 Restaurante ID:', restaurantId);
-      console.log('💰 Total:', total);
-      console.log('📍 Local:', localEntrega);
-
-      // Criar pedido via API
-      const novoPedido = await PedidoService.criarPedido(pedidoData);
-
-      if (novoPedido) {
-        console.log('✅ Pedido criado com sucesso:', novoPedido);
-        
-        // Salvar dados do pedido criado
-        setPedidoCriado(novoPedido);
-        
-        // Fechar modal do carrinho primeiro
-        onClose();
-        
-        // Limpar campos
-        setLocalEntrega('');
-        
-        // Pequeno delay para garantir que o pedido foi salvo
-        setTimeout(() => {
-          setShowCompletedModal(true);
-        }, 100);
-        
-      } else {
-        Alert.alert('Erro', 'Falha ao criar pedido. Tente novamente.');
-      }
-    } catch (error) {
-      console.error('❌ Erro ao finalizar pedido:', error);
-      Alert.alert('Erro', `Ocorreu um erro ao finalizar o pedido: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
   };
 
  const handleGoToOrders = () => {

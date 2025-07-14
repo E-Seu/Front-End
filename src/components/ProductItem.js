@@ -5,28 +5,24 @@ import MenosIcon from '../assets/icons/menosIcon';
 
 const ProductItem = ({ 
   produto_id,
-  restaurante_id, // ✅ Adicionado o restaurante_id
+  restaurante_id,
   nome = "Nome do Produto",
   descricao = "Descrição do produto",
   valor = 0,
+  preco = 0, // ✅ Suporte para 'preco' da API
   tempo_preparo = 0,
   disponivel = true,
-  selos = {}, // Objeto com os selos: { sem_lactose: false, sem_gluten: true, sem_amendoim: true, vegano: false }
+  selos = {},
   onQuantityChange
 }) => {
   const [quantidade, setQuantidade] = useState(0);
   const [maisPressionado, setMaisPressionado] = useState(false);
   const [menosPressionado, setMenosPressionado] = useState(false);
 
-  // Log para debug
-  console.log('🛒 ProductItem props:');
-  console.log('📦 produto_id:', produto_id);
-  console.log('📦 restaurante_id:', restaurante_id);
-  console.log('📦 nome:', nome);
-  console.log('📦 disponivel:', disponivel);
-  console.log('📦 selos:', selos);
+  // ✅ CORREÇÃO: Usar 'preco' se 'valor' for 0 ou undefined (igual ao RestaurantService)
+  const valorFinal = valor || preco || 0;
 
-  // Mapeamento das imagens de selos (baseado na estrutura da API)
+  // ✅ Mapeamento das imagens de selos (baseado na estrutura da API)
   const selosImages = {
     sem_lactose: require('../assets/LactoseFree.png'),
     sem_gluten: require('../assets/GlutenFree.png'),
@@ -35,18 +31,17 @@ const ProductItem = ({
   };
 
   const handleMais = () => {
-    if (!disponivel) return; // Não permite adicionar se não estiver disponível
+    if (!disponivel) return;
     
     const novaQuantidade = quantidade + 1;
     setQuantidade(novaQuantidade);
     
-    // Passar mais informações para o callback
     if (onQuantityChange) {
       onQuantityChange(novaQuantidade, {
         produto_id,
         restaurante_id,
         nome,
-        valor,
+        valor: valorFinal, // ✅ Usar valorFinal calculado
         tempo_preparo,
         disponivel
       });
@@ -58,13 +53,12 @@ const ProductItem = ({
       const novaQuantidade = quantidade - 1;
       setQuantidade(novaQuantidade);
       
-      // Passar mais informações para o callback
       if (onQuantityChange) {
         onQuantityChange(novaQuantidade, {
           produto_id,
           restaurante_id,
           nome,
-          valor,
+          valor: valorFinal, // ✅ Usar valorFinal calculado
           tempo_preparo,
           disponivel
         });
@@ -72,9 +66,29 @@ const ProductItem = ({
     }
   };
 
+  // ✅ CORREÇÃO: Função de formatação igual ao RestaurantService
   const formatarValor = (valor) => {
-    // Converter string para number se necessário
-    const valorNumerico = typeof valor === 'string' ? parseFloat(valor) : valor;
+    let valorNumerico;
+    
+    if (valor === null || valor === undefined) {
+      valorNumerico = 0;
+    } else if (typeof valor === 'string') {
+      valorNumerico = parseFloat(valor);
+    } else if (typeof valor === 'number') {
+      valorNumerico = valor;
+    } else if (typeof valor === 'object' && valor !== null) {
+      // Para Decimal do Python/FastAPI
+      valorNumerico = parseFloat(valor.toString());
+    } else {
+      valorNumerico = parseFloat(valor) || 0;
+    }
+    
+    // Verificar se é um número válido
+    if (isNaN(valorNumerico)) {
+      console.warn('⚠️ Valor inválido para formatação:', valor);
+      valorNumerico = 0;
+    }
+    
     return `R$ ${valorNumerico.toFixed(2).replace('.', ',')}`;
   };
 
@@ -86,27 +100,24 @@ const ProductItem = ({
   // Determinar se os ícones devem estar na versão colorida
   const shouldShowColoredIcons = quantidade > 0;
 
-  // Função para obter selos ativos
+  // ✅ Função para obter selos ativos (alinhada com estrutura da API)
   const getSelosAtivos = () => {    
     if (!selos || typeof selos !== 'object') {
-      console.log('Selos inválidos ou vazios');
       return [];
     }
     
     const selosAtivos = Object.entries(selos)
       .filter(([key, value]) => {
-        // Filtrar apenas os selos válidos (não incluir produto_id)
+        // ✅ Filtrar apenas os selos válidos (não incluir produto_id)
         const isValidSelo = ['sem_lactose', 'sem_gluten', 'sem_amendoim', 'vegano'].includes(key);
         
-        // Verificar se o selo está ativo (true)
+        // ✅ Verificar se o selo está ativo (true)
         const isActive = value === true;
         
-        console.log(`Selo ${key}: ${value} (tipo: ${typeof value}) - Válido: ${isValidSelo}, Ativo: ${isActive}`);
         return isValidSelo && isActive;
       })
       .map(([key, _]) => key);
     
-    console.log('Selos ativos encontrados:', selosAtivos);
     return selosAtivos;
   };
 
@@ -129,7 +140,7 @@ const ProductItem = ({
           {/* Informações de preço e tempo */}
           <View style={styles.priceTimeContainer}>
             <Text style={[styles.valor, !disponivel && styles.textoIndisponivel]}>
-              {formatarValor(valor)}
+              {formatarValor(valorFinal)}
             </Text>
           </View>
 
@@ -284,14 +295,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontStyle: 'italic',
   },
-
-  debugText: {
-    fontSize: 10,
-    fontFamily: 'Nunito-Regular',
-    color: '#999999',
-    marginTop: 2,
-  },
-
+  
   textoIndisponivel: {
     color: '#999999',
   },
