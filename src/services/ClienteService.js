@@ -15,6 +15,9 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     console.log(`🔄 ${config.method?.toUpperCase()} ${config.url}`);
+    if (config.data) {
+      console.log('📦 Dados enviados:', config.data);
+    }
     return config;
   },
   (error) => {
@@ -26,15 +29,20 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => {
     console.log(`✅ ${response.config.method?.toUpperCase()} ${response.config.url} - Status: ${response.status}`);
+    console.log('📡 Resposta recebida:', response.data);
     return response;
   },
   (error) => {
     console.error(`❌ ${error.config?.method?.toUpperCase()} ${error.config?.url} - Erro:`, error.message);
+    if (error.response) {
+      console.error('📡 Status do erro:', error.response.status);
+      console.error('📡 Detalhes do erro:', error.response.data);
+    }
     return Promise.reject(error);
   }
 );
 
-// Mock data para clientes
+// Mock data para fallback
 const MOCK_CLIENTES = [
   { cliente_id: 1, usuario_id: 1, saldo: 200.00 },
   { cliente_id: 2, usuario_id: 2, saldo: 150.00 }
@@ -61,7 +69,7 @@ class ClienteService {
     };
   }
 
-  // Buscar dados do cliente
+  // ✅ Buscar dados do cliente
   static async getCliente(clienteId) {
     try {
       console.log(`🔄 Buscando cliente ${clienteId}...`);
@@ -72,14 +80,22 @@ class ClienteService {
       console.log(`✅ Cliente ${clienteId} encontrado:`, normalizedData);
       return normalizedData;
     } catch (error) {
-      console.log(`📦 Erro ao buscar cliente ${clienteId}, usando mock:`, error.message);
+      console.log(`📦 Erro ao buscar cliente ${clienteId}:`, error.message);
       
+      // Se for erro 404, retornar null
+      if (error.response && error.response.status === 404) {
+        console.log(`❌ Cliente ${clienteId} não encontrado na API`);
+        return null;
+      }
+      
+      // Para outros erros, usar fallback
+      console.log(`📦 Usando fallback para cliente ${clienteId}`);
       const cliente = MOCK_CLIENTES.find(c => c.cliente_id === parseInt(clienteId));
       return cliente ? this.normalizeClienteData(cliente) : null;
     }
   }
 
-  // Listar favoritos do cliente
+  // ✅ Listar favoritos do cliente
   static async listarFavoritos(clienteId) {
     try {
       console.log(`🔄 Buscando favoritos do cliente ${clienteId}...`);
@@ -89,8 +105,9 @@ class ClienteService {
       console.log(`✅ Favoritos do cliente ${clienteId}:`, response.data);
       return response.data;
     } catch (error) {
-      console.log(`📦 Erro ao buscar favoritos, usando mock:`, error.message);
+      console.log(`📦 Erro ao buscar favoritos do cliente ${clienteId}:`, error.message);
       
+      // Fallback para mock
       return {
         cliente_id: parseInt(clienteId),
         favoritos: MOCK_FAVORITOS[parseInt(clienteId)] || []
@@ -98,7 +115,7 @@ class ClienteService {
     }
   }
 
-  // Visualizar saldo do cliente
+  // ✅ Visualizar saldo do cliente
   static async visualizarSaldo(clienteId) {
     try {
       console.log(`🔄 Buscando saldo do cliente ${clienteId}...`);
@@ -108,14 +125,22 @@ class ClienteService {
       console.log(`✅ Saldo do cliente ${clienteId}:`, response.data);
       return response.data;
     } catch (error) {
-      console.log(`📦 Erro ao buscar saldo, usando mock:`, error.message);
+      console.log(`📦 Erro ao buscar saldo do cliente ${clienteId}:`, error.message);
       
+      // Se for erro 404, retornar null
+      if (error.response && error.response.status === 404) {
+        console.log(`❌ Cliente ${clienteId} não encontrado para buscar saldo`);
+        return null;
+      }
+      
+      // Para outros erros, usar fallback
+      console.log(`📦 Usando fallback para saldo do cliente ${clienteId}`);
       const cliente = MOCK_CLIENTES.find(c => c.cliente_id === parseInt(clienteId));
       return cliente ? { cliente_id: parseInt(clienteId), saldo: cliente.saldo } : null;
     }
   }
 
-  // Adicionar favorito
+  // ✅ Adicionar favorito
   static async adicionarFavorito(clienteId, restauranteId) {
     try {
       console.log(`🔄 Adicionando favorito: cliente ${clienteId}, restaurante ${restauranteId}...`);
@@ -125,13 +150,18 @@ class ClienteService {
       console.log(`✅ Favorito adicionado:`, response.data);
       return response.data;
     } catch (error) {
-      console.log(`📦 Erro ao adicionar favorito, usando mock:`, error.message);
+      console.log(`📦 Erro ao adicionar favorito:`, error.message);
       
       // Fallback para mock
       if (!MOCK_FAVORITOS[parseInt(clienteId)]) {
         MOCK_FAVORITOS[parseInt(clienteId)] = [];
       }
-      MOCK_FAVORITOS[parseInt(clienteId)].push(parseInt(restauranteId));
+      
+      // Verificar se já existe para evitar duplicatas
+      const restauranteIdInt = parseInt(restauranteId);
+      if (!MOCK_FAVORITOS[parseInt(clienteId)].includes(restauranteIdInt)) {
+        MOCK_FAVORITOS[parseInt(clienteId)].push(restauranteIdInt);
+      }
       
       return {
         cliente_id: parseInt(clienteId),
@@ -140,7 +170,7 @@ class ClienteService {
     }
   }
 
-  // Remover favorito
+  // ✅ Remover favorito
   static async removerFavorito(clienteId, restauranteId) {
     try {
       console.log(`🔄 Removendo favorito: cliente ${clienteId}, restaurante ${restauranteId}...`);
@@ -150,7 +180,16 @@ class ClienteService {
       console.log(`✅ Favorito removido:`, response.data);
       return response.data;
     } catch (error) {
-      console.log(`📦 Erro ao remover favorito, usando mock:`, error.message);
+      console.log(`📦 Erro ao remover favorito:`, error.message);
+      
+      // Se for erro 404, favorito não existe
+      if (error.response && error.response.status === 404) {
+        console.log(`❌ Favorito não encontrado para remover`);
+        return {
+          cliente_id: parseInt(clienteId),
+          favoritos: MOCK_FAVORITOS[parseInt(clienteId)] || []
+        };
+      }
       
       // Fallback para mock
       if (MOCK_FAVORITOS[parseInt(clienteId)]) {
@@ -167,7 +206,7 @@ class ClienteService {
     }
   }
 
-  // Atualizar restrições
+  // ✅ Atualizar restrições (selos)
   static async atualizarRestricoes(clienteId, restricoes) {
     try {
       console.log(`🔄 Atualizando restrições do cliente ${clienteId}:`, restricoes);
@@ -177,7 +216,7 @@ class ClienteService {
       console.log(`✅ Restrições atualizadas:`, response.data);
       return response.data;
     } catch (error) {
-      console.log(`📦 Erro ao atualizar restrições, usando mock:`, error.message);
+      console.log(`📦 Erro ao atualizar restrições:`, error.message);
       
       // Fallback para mock
       MOCK_RESTRICOES[parseInt(clienteId)] = restricoes;
@@ -189,17 +228,25 @@ class ClienteService {
     }
   }
 
-  // Atualizar saldo
+  // ✅ Atualizar saldo
   static async atualizarSaldo(clienteId, saldo) {
     try {
       console.log(`🔄 Atualizando saldo do cliente ${clienteId} para ${saldo}...`);
       
-      const response = await apiClient.put(`/clientes/${clienteId}/saldo?saldo=${saldo}`);
+      const response = await apiClient.put(`/clientes/${clienteId}/saldo`, null, {
+        params: { saldo: parseFloat(saldo) }
+      });
       
       console.log(`✅ Saldo atualizado:`, response.data);
       return response.data;
     } catch (error) {
-      console.log(`📦 Erro ao atualizar saldo, usando mock:`, error.message);
+      console.log(`📦 Erro ao atualizar saldo:`, error.message);
+      
+      // Se for erro 404, cliente não existe
+      if (error.response && error.response.status === 404) {
+        console.log(`❌ Cliente ${clienteId} não encontrado para atualizar saldo`);
+        return null;
+      }
       
       // Fallback para mock
       const cliente = MOCK_CLIENTES.find(c => c.cliente_id === parseInt(clienteId));
@@ -211,7 +258,7 @@ class ClienteService {
     }
   }
 
-  // Verificar se restaurante é favorito
+  // ✅ Verificar se restaurante é favorito
   static async isFavorito(clienteId, restauranteId) {
     try {
       const favoritos = await this.listarFavoritos(clienteId);
@@ -222,13 +269,98 @@ class ClienteService {
     }
   }
 
-  // Método utilitário para configurar URL da API
+  // ✅ Buscar restrições/selos do cliente
+  static async buscarRestricoes(clienteId) {
+    try {
+      console.log(`🔄 Buscando restrições do cliente ${clienteId}...`);
+      
+      // Como não tem endpoint específico para buscar restrições, usar mock
+      return {
+        cliente_id: parseInt(clienteId),
+        restricoes: MOCK_RESTRICOES[parseInt(clienteId)] || []
+      };
+    } catch (error) {
+      console.log(`📦 Erro ao buscar restrições:`, error.message);
+      
+      return {
+        cliente_id: parseInt(clienteId),
+        restricoes: []
+      };
+    }
+  }
+
+  // ✅ Validar se cliente existe
+  static async validarCliente(clienteId) {
+    try {
+      const cliente = await this.getCliente(clienteId);
+      return cliente !== null;
+    } catch (error) {
+      console.error('❌ Erro ao validar cliente:', error);
+      return false;
+    }
+  }
+
+  // ✅ Obter dados completos do cliente
+  static async getDadosCompletos(clienteId) {
+    try {
+      console.log(`🔄 Buscando dados completos do cliente ${clienteId}...`);
+      
+      const [cliente, favoritos, restricoes] = await Promise.all([
+        this.getCliente(clienteId),
+        this.listarFavoritos(clienteId),
+        this.buscarRestricoes(clienteId)
+      ]);
+      
+      return {
+        cliente,
+        favoritos: favoritos.favoritos,
+        restricoes: restricoes.restricoes
+      };
+    } catch (error) {
+      console.error('❌ Erro ao buscar dados completos:', error);
+      return null;
+    }
+  }
+
+  // ✅ Método para debug - listar todos os endpoints
+  static async debugEndpoints() {
+    console.log('🔍 Testando endpoints do ClienteService...');
+    
+    const clienteId = 1;
+    const restauranteId = 1;
+    
+    try {
+      console.log('1. Testando getCliente...');
+      await this.getCliente(clienteId);
+      
+      console.log('2. Testando listarFavoritos...');
+      await this.listarFavoritos(clienteId);
+      
+      console.log('3. Testando visualizarSaldo...');
+      await this.visualizarSaldo(clienteId);
+      
+      console.log('4. Testando buscarRestricoes...');
+      await this.buscarRestricoes(clienteId);
+      
+      console.log('5. Testando validarCliente...');
+      await this.validarCliente(clienteId);
+      
+      console.log('6. Testando getDadosCompletos...');
+      await this.getDadosCompletos(clienteId);
+      
+      console.log('✅ Todos os endpoints testados!');
+    } catch (error) {
+      console.error('❌ Erro nos testes:', error);
+    }
+  }
+
+  // ✅ Método utilitário para configurar URL da API
   static setApiUrl(url) {
     apiClient.defaults.baseURL = url;
     console.log(`🔧 URL da API alterada para: ${url}`);
   }
 
-  // Método para verificar status da API
+  // ✅ Método para verificar status da API
   static async checkApiStatus() {
     try {
       const response = await apiClient.get('/');
