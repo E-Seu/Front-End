@@ -6,48 +6,63 @@ const CurrentOrder = ({
   horario = "hora",
   nomeRestaurante = "Restaurante Exemplo",
   primeiroItem = "item exemplo",
+  status = "",
   onVisualizarPress
 }) => {
   
   const handleVisualizarPress = () => {
-    console.log('Visualizar pedido pressionado');
     if (onVisualizarPress) {
       onVisualizarPress();
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        {/* Lado esquerdo - Informações do pedido */}
-        <View style={styles.infoContainer}>
-          <View style={styles.horarioContainer}>
-            <Text style={styles.pedidoFeitoText}>Pedido feito às </Text>
-            <Text style={styles.horarioText}>{horario}</Text>
-          </View>
-          
-          <Text style={styles.nomeRestaurante}>{nomeRestaurante}</Text>
-          
-          <Text style={styles.primeiroItem} numberOfLines={1}>
-            {primeiroItem}...
-          </Text>
-        </View>
+  // Função para exibir o status de forma amigável (opcional)
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'aguardando': return 'Aguardando';
+      case 'em_preparo': return 'Em preparo';
+      case 'pronto': return 'Pronto';
+      case 'a_caminho': return 'A caminho';
+      case 'entregue': return 'Entregue';
+      case 'cancelado': return 'Cancelado';
+      default: return status || '';
+    }
+  };
 
-        {/* Lado direito - Ícone e botão */}
-        <View style={styles.rightContainer}>
-          <RelogioIcon width={25} height={25} />
-          
-          <TouchableOpacity 
-            style={styles.visualizarButton}
-            onPress={handleVisualizarPress}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.visualizarText}>Visualizar Pedido</Text>
-          </TouchableOpacity>
+return (
+  <View style={styles.container}>
+    <View style={styles.content}>
+      {/* Lado esquerdo - Informações do pedido */}
+      <View style={styles.infoContainer}>
+        <View style={styles.horarioContainer}>
+          <Text style={styles.pedidoFeitoText}>Pedido feito às </Text>
+          <Text style={styles.horarioText}>{horario}</Text>
         </View>
+        <Text style={styles.nomeRestaurante}>{nomeRestaurante}</Text>
+        <Text style={styles.primeiroItem} numberOfLines={1}>
+          {primeiroItem}...
+        </Text>
+      </View>
+
+      {/* Lado direito - Ícone, status e botão */}
+      <View style={styles.rightContainer}>
+        <View style={styles.statusRelogioContainer}>
+          {status ? (
+            <Text style={styles.statusText}>{getStatusLabel(status)}</Text>
+          ) : null}
+          <RelogioIcon width={25} height={25} style={{ marginLeft: 4 }} />
+        </View>
+        <TouchableOpacity 
+          style={styles.visualizarButton}
+          onPress={handleVisualizarPress}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.visualizarText}>Visualizar Pedido</Text>
+        </TouchableOpacity>
       </View>
     </View>
-  );
+  </View>
+);
 };
 
 const styles = StyleSheet.create({
@@ -98,6 +113,13 @@ const styles = StyleSheet.create({
     color: '#222222',
   },
 
+  statusText: {
+    fontSize: 14,
+    fontFamily: 'Nunito-Bold',
+    color: '#4E0777',
+    marginLeft: 6,
+  },
+
   nomeRestaurante: {
     fontSize: 14,
     fontFamily: 'Nunito-Regular',
@@ -126,6 +148,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Nunito-Bold',
     color: '#4E0777',
+  },
+
+   statusRelogioContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  statusText: {
+    fontSize: 16,
+    fontFamily: 'Nunito-Bold',
+    color: '#4E0777',
+    marginRight: 8,
   },
 });
 

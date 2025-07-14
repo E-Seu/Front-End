@@ -686,15 +686,15 @@ const styles = StyleSheet.create({
 
   // Estilo para lista vazia
   emptyContainer: {
-    padding: 40,
+    padding: 30,
     alignItems: 'center',
-    marginTop: 50,
+    marginTop: 20,
   },
 
   emptyText: {
-    fontSize: 18,
-    fontFamily: 'Nunito-ExtraBold',
-    color: '#F03800',
+    fontSize: 16,
+    fontFamily: 'Nunito-Bold',
+    color: '#4E0777',
     textAlign: 'center',
     marginBottom: 10,
   },

@@ -150,20 +150,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 100,
+    paddingTop: 20,
   },
 
   emptyText: {
-    fontSize: 18,
-    fontFamily: 'Nunito-ExtraBold',
-    color: '#F03800',
+    fontSize: 16,
+    fontFamily: 'Nunito-Bold',
+    color: '#4E0777',
     textAlign: 'center',
     marginBottom: 10,
   },
 
   emptySubtext: {
     fontSize: 14,
-    fontFamily: 'Nunito-Bold',
+    fontFamily: 'Nunito-Medium',
     color: '#888888',
     textAlign: 'center',
   },
