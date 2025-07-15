@@ -73,30 +73,28 @@ const ClientePedidos = ({ navigation, route }) => {
       setLoading(true);
       if (!clienteId) return;
       if (!PedidoService.listarPedidosCliente) return;
+      
       const pedidos = await PedidoService.listarPedidosCliente(clienteId);
+      console.log('📦 Pedidos carregados:', pedidos);
 
-      // Filtrar todos os pedidos ativos
-      const pedidosAtivos = pedidos.filter(pedido => PedidoService.isPedidoAtivo(pedido.status));
-      // Pega o mais recente como atual
-      let pedidoAtivoMaisRecente = null;
-      if (pedidosAtivos.length > 0) {
-        pedidoAtivoMaisRecente = pedidosAtivos.reduce((a, b) =>
-          new Date(a.data_hora) > new Date(b.data_hora) ? a : b
-        );
-      }
+      // ✅ CORREÇÃO: Usar função correta do PedidoService
+      const pedidoAtivoMaisRecente = PedidoService.encontrarPedidoAtual(pedidos);
+      console.log('📦 Pedido ativo encontrado:', pedidoAtivoMaisRecente);
 
-      // O histórico são todos os outros pedidos (inclusive ativos antigos)
-      const pedidosHistorico = pedidos.filter(
-        pedido => !PedidoService.isPedidoAtivo(pedido.status) ||
-          (pedidoAtivoMaisRecente && pedido.pedido_id !== pedidoAtivoMaisRecente.pedido_id && PedidoService.isPedidoAtivo(pedido.status))
+      // ✅ O histórico são apenas pedidos finalizados
+      const pedidosHistorico = pedidos.filter(pedido => 
+        pedido.status === 'entregue' || pedido.status === 'cancelado'
       );
+      console.log('📦 Pedidos do histórico:', pedidosHistorico);
 
       // Processar pedido atual
       if (pedidoAtivoMaisRecente) {
         const pedidoAtualFormatado = await formatarPedidoAtual(pedidoAtivoMaisRecente);
         setPedidoAtual(pedidoAtualFormatado);
+        console.log('✅ Pedido atual definido:', pedidoAtualFormatado);
       } else {
         setPedidoAtual(null);
+        console.log('ℹ️ Nenhum pedido ativo encontrado');
       }
 
       // Processar histórico (ordenar por data mais recente primeiro)
@@ -111,6 +109,7 @@ const ClientePedidos = ({ navigation, route }) => {
       setHistoricoPedidos(historicoFormatado);
 
     } catch (error) {
+      console.error('❌ Erro ao carregar pedidos:', error);
       setPedidoAtual(null);
       setHistoricoPedidos([]);
     } finally {
@@ -215,7 +214,8 @@ const ClientePedidos = ({ navigation, route }) => {
     } catch (error) {}
   };
 
-  const temPedidoAtual = pedidoAtual && PedidoService.isPedidoAtivo?.(pedidoAtual.status);
+  const temPedidoAtual = pedidoAtual && pedidoAtual.status && PedidoService.isPedidoAtivo(pedidoAtual.status);
+
 
   const renderOldOrderItem = ({ item }) => (
     <OldOrder

@@ -8,6 +8,8 @@ import ProductItem from '../../components/ProductItem';
 import CartModal from '../../components/CartModal';
 import FilterModal from '../../components/FilterModal';
 import RestaurantService from '../../services/RestaurantService';
+import LoginService from '../../services/LoginService';
+import PedidoService from '../../services/PedidoService';
 
 // Imagens genéricas para restaurantes (mesmo array do RestaurantItem)
 const restaurantImages = [
@@ -25,6 +27,8 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [carrinho, setCarrinho] = useState({});
+  const [temPedidoAtivo, setTemPedidoAtivo] = useState(false);
+  const [pedidoAtivo, setPedidoAtivo] = useState(null);
   const [showCartModal, setShowCartModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState({
@@ -68,6 +72,26 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
       loadRestaurantProducts();
     }
   }, [restaurantId]);
+
+  // Verificar se cliente tem pedido ativo
+  useEffect(() => {
+    verificarPedidoAtivo();
+  }, []);
+
+  const verificarPedidoAtivo = async () => {
+    try {
+      const currentUser = await LoginService.getCurrentUser();
+      if (currentUser.success) {
+        const clienteId = currentUser.user.id || currentUser.user.usuario_id;
+        const { temPedidoAtivo, pedidoAtivo } = await PedidoService.clienteTemPedidoAtivo(clienteId);
+        
+        setTemPedidoAtivo(temPedidoAtivo);
+        setPedidoAtivo(pedidoAtivo);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao verificar pedido ativo:', error);
+    }
+  };
 
   const loadRestaurantProducts = async () => {
     try {
@@ -239,12 +263,23 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
 
   const handleCarrinhoPress = () => {
     console.log('🛒 Botão do carrinho pressionado');
-    console.log('📦 restaurantId sendo passado:', restaurantId);
-    console.log('📦 restaurant?.nome:', restaurant?.nome);
-    console.log('📦 carrinho:', carrinho);
-    console.log('📦 produtos:', produtos);
     
-    // Verificação adicional antes de abrir o modal
+    // ✅ Verificar se tem pedido ativo antes de abrir carrinho
+    if (temPedidoAtivo) {
+      const statusLabel = PedidoService.getStatusLabel(pedidoAtivo.status);
+      Alert.alert(
+        'Pedido Ativo',
+        `Você já possui um pedido ativo (${statusLabel}). Aguarde a entrega para fazer um novo pedido.`,
+        [
+          { text: 'Ver Pedido', onPress: () => {
+            navigation.navigate('ClientePedidos');
+          }},
+          { text: 'OK', style: 'cancel' }
+        ]
+      );
+      return;
+    }
+    
     if (!restaurantId) {
       Alert.alert('Erro', 'ID do restaurante não encontrado. Não é possível abrir o carrinho.');
       return;

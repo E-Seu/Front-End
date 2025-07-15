@@ -300,25 +300,29 @@ class ClienteService {
     }
   }
 
-  // ✅ Obter dados completos do cliente
-  static async getDadosCompletos(clienteId) {
+  // ✅ Buscar dados do cliente
+  static async getCliente(clienteId) {
     try {
-      console.log(`🔄 Buscando dados completos do cliente ${clienteId}...`);
+      console.log(`🔄 Buscando cliente ${clienteId}...`);
       
-      const [cliente, favoritos, restricoes] = await Promise.all([
-        this.getCliente(clienteId),
-        this.listarFavoritos(clienteId),
-        this.buscarRestricoes(clienteId)
-      ]);
+      const response = await apiClient.get(`/clientes/${clienteId}`);
+      const normalizedData = this.normalizeClienteData(response.data);
       
-      return {
-        cliente,
-        favoritos: favoritos.favoritos,
-        restricoes: restricoes.restricoes
-      };
+      console.log(`✅ Cliente ${clienteId} encontrado:`, normalizedData);
+      return normalizedData;
     } catch (error) {
-      console.error('❌ Erro ao buscar dados completos:', error);
-      return null;
+      console.log(`📦 Erro ao buscar cliente ${clienteId}:`, error.message);
+      
+      // Se for erro 404, retornar null
+      if (error.response && error.response.status === 404) {
+        console.log(`❌ Cliente ${clienteId} não encontrado na API`);
+        return null;
+      }
+      
+      // Para outros erros, usar fallback
+      console.log(`📦 Usando fallback para cliente ${clienteId}`);
+      const cliente = MOCK_CLIENTES.find(c => c.cliente_id === parseInt(clienteId));
+      return cliente ? this.normalizeClienteData(cliente) : null;
     }
   }
 

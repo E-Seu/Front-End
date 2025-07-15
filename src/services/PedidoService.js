@@ -58,18 +58,110 @@ class PedidoService {
     };
   }
 
-  // ✅ CORREÇÃO: Método para listar pedidos do cliente (usado pelo ClientePedidos.js)
+  // ✅ NOVA FUNÇÃO: Encontrar pedido ativo mais recente
+  static encontrarPedidoAtual(pedidos) {
+    if (!Array.isArray(pedidos) || pedidos.length === 0) {
+      console.log('📦 Nenhum pedido fornecido para buscar pedido atual');
+      return null;
+    }
+
+    // Filtrar apenas pedidos ativos
+    const pedidosAtivos = pedidos.filter(pedido => {
+      const isAtivo = this.isPedidoAtivo(pedido.status);
+      console.log(`📦 Pedido ${pedido.pedido_id} - Status: ${pedido.status} - Ativo: ${isAtivo}`);
+      return isAtivo;
+    });
+    
+    console.log(`📦 Total de pedidos ativos encontrados: ${pedidosAtivos.length}`);
+    
+    if (pedidosAtivos.length === 0) {
+      console.log('📦 Nenhum pedido ativo encontrado');
+      return null;
+    }
+
+    // Ordenar por data mais recente e retornar o primeiro
+    const pedidoMaisRecente = pedidosAtivos.sort((a, b) => 
+      new Date(b.data_hora) - new Date(a.data_hora)
+    )[0];
+
+    console.log('📦 Pedido ativo mais recente encontrado:', {
+      pedido_id: pedidoMaisRecente.pedido_id,
+      status: pedidoMaisRecente.status,
+      data_hora: pedidoMaisRecente.data_hora
+    });
+    
+    return pedidoMaisRecente;
+  }
+
+  // ✅ NOVA FUNÇÃO: Verificar se cliente tem pedido ativo
+  static async clienteTemPedidoAtivo(clienteId) {
+    try {
+      console.log(`🔄 Verificando se cliente ${clienteId} tem pedido ativo...`);
+      
+      const pedidos = await this.listarPedidosCliente(clienteId);
+      const pedidoAtivo = this.encontrarPedidoAtual(pedidos);
+      
+      const resultado = {
+        temPedidoAtivo: pedidoAtivo !== null,
+        pedidoAtivo: pedidoAtivo
+      };
+      
+      console.log(`✅ Cliente ${clienteId} tem pedido ativo:`, resultado.temPedidoAtivo);
+      
+      return resultado;
+    } catch (error) {
+      console.error('❌ Erro ao verificar pedido ativo:', error);
+      return {
+        temPedidoAtivo: false,
+        pedidoAtivo: null
+      };
+    }
+  }
+
+  // ✅ NOVA FUNÇÃO: Função para obter rótulo do status
+  static getStatusLabel(status) {
+    const statusLabels = {
+      'aguardando': 'Aguardando',
+      'em_preparo': 'Em preparo', 
+      'pronto': 'Pronto',
+      'a_caminho': 'A caminho',
+      'entregue': 'Entregue',
+      'cancelado': 'Cancelado'
+    };
+    return statusLabels[status] || status;
+  }
+
+  // ✅ NOVA FUNÇÃO: Filtrar pedidos por tipo
+  static filtrarPedidosPorTipo(pedidos, tipo = 'todos') {
+    if (!Array.isArray(pedidos)) {
+      console.warn('⚠️ Pedidos fornecidos não são um array:', pedidos);
+      return [];
+    }
+
+    switch (tipo) {
+      case 'ativos':
+        return pedidos.filter(pedido => this.isPedidoAtivo(pedido.status));
+      case 'historico':
+        return pedidos.filter(pedido => pedido.status === 'entregue' || pedido.status === 'cancelado');
+      case 'entregues':
+        return pedidos.filter(pedido => pedido.status === 'entregue');
+      case 'cancelados':
+        return pedidos.filter(pedido => pedido.status === 'cancelado');
+      default:
+        return pedidos;
+    }
+  }
+
   static async listarPedidosCliente(clienteId) {
     try {
       console.log(`🔄 Buscando pedidos do cliente ${clienteId}...`);
       
-      // ✅ Usar rota correta da API: GET /pedidos/historico/{usuario_id}
       const response = await apiClient.get(`/pedidos/historico/${clienteId}`);
       const normalizedData = response.data.map(pedido => this.normalizePedidoData(pedido));
       
       console.log(`✅ Pedidos do cliente ${clienteId} carregados:`, normalizedData.length, 'pedidos');
       
-      // ✅ Adicionar ao cache para acesso offline
+      // Atualizar cache
       this._pedidosCache = normalizedData;
       
       return normalizedData;
@@ -87,7 +179,6 @@ class PedidoService {
     }
   }
 
-  // ✅ CORREÇÃO: Método para buscar pedido específico (usado pelo ClientePedidos.js)
   static async buscarPedido(pedidoId) {
     try {
       console.log(`🔄 Buscando pedido ${pedidoId}...`);
@@ -107,7 +198,6 @@ class PedidoService {
     }
   }
 
-  // ✅ Método de teste de conexão para pedidos
   static async testConnection() {
     try {
       console.log('🔍 Testando conexão com a API de pedidos...');
@@ -137,17 +227,17 @@ class PedidoService {
     }
   }
 
-  // ✅ Acompanhar pedido específico (mantém nome original para compatibilidade)
+  // Acompanhar pedido específico (mantém nome original para compatibilidade)
   static async acompanharPedido(pedidoId) {
     return this.buscarPedido(pedidoId);
   }
 
-  // ✅ Histórico de pedidos do usuário (mantém nome original para compatibilidade)
+  // Histórico de pedidos do usuário (mantém nome original para compatibilidade)
   static async historicoPedidos(usuarioId) {
     return this.listarPedidosCliente(usuarioId);
   }
 
-  // ✅ Criar novo pedido
+  // Criar novo pedido
   static async criarPedido(pedidoData) {
     try {
       console.log('🔄 Criando pedido (dados recebidos):', JSON.stringify(pedidoData, null, 2));
@@ -163,7 +253,7 @@ class PedidoService {
         throw new Error('localizacao é obrigatória');
       }
       
-      // ✅ Estrutura correta para API FastAPI usando PedidoBase
+      // Estrutura correta para API FastAPI usando PedidoBase
       const apiPedidoData = {
         cliente_id: parseInt(pedidoData.cliente_id),
         restaurante_id: parseInt(pedidoData.restaurante_id),
@@ -192,13 +282,13 @@ class PedidoService {
       }
       
       try {
-        // ✅ Tentar criar pedido na API usando POST /pedidos
+        // Tentar criar pedido na API usando POST /pedidos
         const response = await apiClient.post('/pedidos', apiPedidoData);
         const normalizedData = this.normalizePedidoData(response.data);
         
         console.log('✅ Pedido criado com sucesso na API:', normalizedData);
         
-        // ✅ Adicionar ao cache para aparecer imediatamente
+        // Adicionar ao cache para aparecer imediatamente
         this._pedidosCache.push(normalizedData);
         console.log('📦 Pedido adicionado ao cache. Total no cache:', this._pedidosCache.length);
         
@@ -223,7 +313,7 @@ class PedidoService {
           }
         }
         
-        // ✅ Mesmo com erro da API, criar no cache local para teste
+        // Mesmo com erro da API, criar no cache local para teste
         const novoPedido = {
           ...apiPedidoData,
           pedido_id: Date.now(), // ID temporário baseado no timestamp
@@ -246,13 +336,18 @@ class PedidoService {
     }
   }
 
-  // ✅ Atualizar status do pedido
+  // Atualizar status do pedido
   static async atualizarStatusPedido(pedidoId, novoStatus) {
     try {
       console.log(`🔄 Atualizando status do pedido ${pedidoId} para ${novoStatus}...`);
       
-      // ✅ Usar query parameter como definido na API: PUT /pedidos/{id}/status?status={status}
-      const response = await apiClient.put(`/pedidos/${pedidoId}/status?status=${novoStatus}`);
+      const requestData = {
+        status: novoStatus
+      };
+      
+      console.log('📦 Dados da requisição:', requestData);
+      
+      const response = await apiClient.put(`/pedidos/${pedidoId}/status`, requestData);
       
       console.log(`✅ Status do pedido ${pedidoId} atualizado:`, response.data);
       
@@ -267,6 +362,22 @@ class PedidoService {
     } catch (error) {
       console.log(`📦 Erro ao atualizar status do pedido ${pedidoId}:`, error.message);
       
+      // ✅ Log detalhado do erro para debug
+      if (error.response) {
+        console.error('📡 Status do erro:', error.response.status);
+        console.error('📡 Dados do erro:', JSON.stringify(error.response.data, null, 2));
+        
+        // Detalhes específicos do erro 422
+        if (error.response.status === 422) {
+          console.error('🔍 Erro de validação (422):');
+          if (error.response.data.detail) {
+            error.response.data.detail.forEach(err => {
+              console.error(`❌ Campo: ${err.loc?.join('.')} - Erro: ${err.msg} - Tipo: ${err.type}`);
+            });
+          }
+        }
+      }
+      
       // Fallback para cache
       const pedido = this._pedidosCache.find(p => p.pedido_id === parseInt(pedidoId));
       if (pedido) {
@@ -274,16 +385,18 @@ class PedidoService {
         console.log('📦 Status atualizado no cache local');
         return { pedido_id: pedidoId, novo_status: novoStatus };
       }
-      return null;
+      
+      // Re-throw o erro para que o modal possa exibir mensagem de erro
+      throw error;
     }
   }
 
-  // ✅ Cancelar pedido
+  // Cancelar pedido
   static async cancelarPedido(pedidoId) {
     try {
       console.log(`🔄 Cancelando pedido ${pedidoId}...`);
       
-      // ✅ Usar rota correta da API: PUT /pedidos/{id}/cancelar
+      // Usar rota correta da API: PUT /pedidos/{id}/cancelar
       const response = await apiClient.put(`/pedidos/${pedidoId}/cancelar`);
       
       console.log(`✅ Pedido ${pedidoId} cancelado:`, response.data);
@@ -310,7 +423,7 @@ class PedidoService {
     }
   }
 
-  // ✅ Formatar data para exibição
+  // Formatar data para exibição
   static formatarDataHora(dataHora) {
     try {
       const data = new Date(dataHora);
@@ -334,13 +447,13 @@ class PedidoService {
     }
   }
 
-  // ✅ Mapear status para português
+  // Mapear status para português
   static mapearStatus(status) {
     const statusMap = {
       'aguardando': 'Aguardando',
-      'em preparo': 'Em preparo',
+      'em_preparo': 'Em preparo',
       'pronto': 'Pronto',
-      'a caminho': 'A caminho',
+      'a_caminho': 'A caminho',
       'entregue': 'Entregue',
       'cancelado': 'Cancelado',
       'concluido': 'Concluído'
@@ -348,13 +461,15 @@ class PedidoService {
     return statusMap[status] || status;
   }
 
-  // ✅ Verificar se o pedido está em andamento
+  // Verificar se o pedido está em andamento
   static isPedidoAtivo(status) {
-    const statusAtivos = ['aguardando', 'em preparo', 'pronto', 'a caminho'];
-    return statusAtivos.includes(status);
+    const statusAtivos = ['aguardando', 'em_preparo', 'pronto', 'a_caminho'];
+    const isAtivo = statusAtivos.includes(status);
+    console.log(`📦 Verificando se status '${status}' é ativo: ${isAtivo}`);
+    return isAtivo;
   }
 
-  // ✅ Calcular tempo estimado baseado no status
+  // Calcular tempo estimado baseado no status
   static calcularTempoEstimado(status, dataPedido) {
     try {
       const agora = new Date();
@@ -363,9 +478,9 @@ class PedidoService {
       
       const temposPorStatus = {
         'aguardando': 5,
-        'em preparo': 30,
+        'em_preparo': 30,
         'pronto': 35,
-        'a caminho': 45
+        'a_caminho': 45
       };
       
       const tempoTotal = temposPorStatus[status] || 0;
@@ -382,19 +497,50 @@ class PedidoService {
     }
   }
 
-  // ✅ Método para limpar cache (útil para debug)
+  // Buscar pedidos de um restaurante específico
+  static async listarPedidosRestaurante(restauranteId) {
+    try {
+      console.log(`🔄 Buscando pedidos do restaurante ${restauranteId}...`);
+      
+      // Usar endpoint específico: GET /restaurantes/{id}/pedidos
+      const response = await apiClient.get(`/restaurantes/${restauranteId}/pedidos`);
+      const normalizedData = response.data.map(pedido => this.normalizePedidoData(pedido));
+      
+      console.log(`✅ Pedidos do restaurante ${restauranteId} carregados:`, normalizedData.length, 'pedidos');
+      
+      return normalizedData;
+    } catch (error) {
+      console.log(`📦 Erro ao buscar pedidos do restaurante ${restauranteId}:`, error.message);
+      
+      // Fallback: buscar todos os pedidos do cache e filtrar
+      const todosPedidos = this._pedidosCache.length > 0 
+        ? this._pedidosCache 
+        : await this.listarPedidosCliente(1); // Fallback temporário
+      
+      // Filtrar pedidos do restaurante específico
+      const pedidosDoRestaurante = todosPedidos.filter(
+        pedido => pedido.restaurante_id === parseInt(restauranteId)
+      );
+      
+      console.log(`📦 Pedidos encontrados no fallback:`, pedidosDoRestaurante.length);
+      
+      return pedidosDoRestaurante;
+    }
+  }
+
+  // Método para limpar cache (útil para debug)
   static limparCache() {
     this._pedidosCache = [];
     console.log('🗑️ Cache de pedidos limpo');
   }
 
-  // ✅ Método para ver cache (útil para debug)
+  // Método para ver cache (útil para debug)
   static verCache() {
     console.log('📦 Cache atual:', this._pedidosCache);
     return this._pedidosCache;
   }
 
-  // ✅ Método para adicionar pedido ao cache manualmente (útil para testes)
+  // Método para adicionar pedido ao cache manualmente (útil para testes)
   static adicionarAoCache(pedido) {
     const normalizedPedido = this.normalizePedidoData(pedido);
     this._pedidosCache.push(normalizedPedido);
@@ -402,7 +548,7 @@ class PedidoService {
     return normalizedPedido;
   }
 
-  // ✅ Método para remover pedido do cache
+  // Método para remover pedido do cache
   static removerDoCache(pedidoId) {
     const index = this._pedidosCache.findIndex(p => p.pedido_id === parseInt(pedidoId));
     if (index !== -1) {
@@ -413,13 +559,13 @@ class PedidoService {
     return null;
   }
 
-  // ✅ Método utilitário para configurar URL da API dinamicamente
+  // Método utilitário para configurar URL da API dinamicamente
   static setApiUrl(url) {
     apiClient.defaults.baseURL = url;
     console.log(`🔧 URL da API de pedidos alterada para: ${url}`);
   }
 
-  // ✅ Método para verificar status da API
+  // Método para verificar status da API
   static async checkApiStatus() {
     try {
       const response = await apiClient.get('/');
@@ -427,6 +573,40 @@ class PedidoService {
     } catch (error) {
       return { online: false, error: error.message };
     }
+  }
+
+  // ✅ NOVA FUNÇÃO: Método para debug - testar funções de pedido ativo
+  static debugPedidoAtivo() {
+    console.log('🔍 Testando funções de pedido ativo...');
+    
+    // Testar isPedidoAtivo
+    const statusTeste = ['aguardando', 'em_preparo', 'pronto', 'a_caminho', 'entregue', 'cancelado'];
+    
+    console.log('📦 Teste isPedidoAtivo:');
+    statusTeste.forEach(status => {
+      console.log(`  - ${status}: ${this.isPedidoAtivo(status)}`);
+    });
+    
+    // Testar getStatusLabel
+    console.log('📦 Teste getStatusLabel:');
+    statusTeste.forEach(status => {
+      console.log(`  - ${status}: ${this.getStatusLabel(status)}`);
+    });
+    
+    // Testar com pedidos mock
+    const pedidosMock = [
+      { pedido_id: 1, status: 'aguardando', data_hora: '2025-01-15T10:00:00Z' },
+      { pedido_id: 2, status: 'em_preparo', data_hora: '2025-01-15T11:00:00Z' },
+      { pedido_id: 3, status: 'entregue', data_hora: '2025-01-15T09:00:00Z' }
+    ];
+    
+    console.log('📦 Teste encontrarPedidoAtual:');
+    const pedidoAtual = this.encontrarPedidoAtual(pedidosMock);
+    console.log('  - Resultado:', pedidoAtual);
+    
+    console.log('📦 Teste filtrarPedidosPorTipo:');
+    console.log('  - Ativos:', this.filtrarPedidosPorTipo(pedidosMock, 'ativos'));
+    console.log('  - Histórico:', this.filtrarPedidosPorTipo(pedidosMock, 'historico'));
   }
 }
 
