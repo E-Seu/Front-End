@@ -25,6 +25,7 @@ const MobileRestaurantModal = ({ visible, onClose, formData, navigation }) => {
     horarioAbertura: '',
     horarioFechamento: '',
     naoLocalFixo: false,
+    info: '', // Adicionado campo info (descrição)
   });
   const [loading, setLoading] = useState(false);
 
@@ -118,26 +119,31 @@ const MobileRestaurantModal = ({ visible, onClose, formData, navigation }) => {
         Alert.alert('Erro', 'Senhas não coincidem');
         return;
       }
-      
-      // Tentar registrar restaurante
-      const resultado = await RegisterService.registrarRestaurante({
+
+      // Preparar dados completos para o registro (igual ao Fixed)
+      const dadosCompletos = {
         nome: formData.nomeRestaurante,
         email: formData.email,
-        senha: formData.senha
-      });
-      
+        senha: formData.senha,
+        info: modalData.info || formData.nomeRestaurante, // Descrição do restaurante
+        local: modalData.localizacao,
+        horario_abertura: modalData.horarioAbertura,
+        horario_fechamento: modalData.horarioFechamento,
+        telefone: formData.telefone || null,
+        tipo: formData.matricula ? 'ambulante_aluno' : 'ambulante_nao_aluno',
+        naoLocalFixo: modalData.naoLocalFixo,
+        nomeResponsavel: formData.nomeResponsavel,
+        matricula: formData.matricula || null
+      };
+
+      console.log('📦 Dados enviados para registro:', dadosCompletos);
+
+      // Tentar registrar restaurante
+      const resultado = await RegisterService.registrarRestaurante(dadosCompletos);
+
       if (resultado.success) {
         console.log('✅ Restaurante ambulante cadastrado com sucesso:', resultado.data);
-        
-        // Aqui você pode salvar os dados adicionais (localização, horários, etc.)
-        console.log('📦 Dados adicionais do restaurante ambulante:', {
-          ...modalData,
-          telefone: formData.telefone,
-          nomeResponsavel: formData.nomeResponsavel,
-          matricula: formData.matricula, // Só estará presente se for aluno
-          tipoRestaurante: formData.matricula ? 'ambulante_aluno' : 'ambulante_nao_aluno'
-        });
-        
+
         // Fechar modal e navegar para tela de sucesso
         onClose();
         navigation.navigate('RegisterSucess');
@@ -211,6 +217,17 @@ const MobileRestaurantModal = ({ visible, onClose, formData, navigation }) => {
             </Text>
 
             <View style={styles.formContainer}>
+              {/* Campo de descrição igual ao Fixed */}
+              <CustomInput
+                label="Descrição do Restaurante"
+                placeholder="Descreva seu restaurante brevemente"
+                value={modalData.info}
+                onChangeText={(value) => handleInputChange('info', value)}
+                multiline={true}
+                numberOfLines={3}
+                style={styles.infoInput}
+              />
+
               <CustomInput
                 label="Localização Habitual"
                 placeholder="Digite sua localização habitual"
@@ -317,6 +334,14 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     marginBottom: 30,
+  },
+  infoInput: {
+    marginBottom: 16,
+    minHeight: 80, // Igual ao FixedRestaurantModal
+  },
+  inputDisabled: {
+    backgroundColor: '#f0f0f0',
+    color: '#aaa',
   },
   checkboxContainer: {
     flexDirection: 'row',
