@@ -1,4 +1,3 @@
-// ...existing code...
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -69,56 +68,56 @@ const ClientePedidos = ({ navigation, route }) => {
     } catch (error) {}
   };
 
-const loadPedidos = async () => {
-  try {
-    setLoading(true);
-    if (!clienteId) return;
-    if (!PedidoService.listarPedidosCliente) return;
-    const pedidos = await PedidoService.listarPedidosCliente(clienteId);
+  const loadPedidos = async () => {
+    try {
+      setLoading(true);
+      if (!clienteId) return;
+      if (!PedidoService.listarPedidosCliente) return;
+      const pedidos = await PedidoService.listarPedidosCliente(clienteId);
 
-    // Filtrar todos os pedidos ativos
-    const pedidosAtivos = pedidos.filter(pedido => PedidoService.isPedidoAtivo(pedido.status));
-    // Pega o mais recente como atual
-    let pedidoAtivoMaisRecente = null;
-    if (pedidosAtivos.length > 0) {
-      pedidoAtivoMaisRecente = pedidosAtivos.reduce((a, b) =>
-        new Date(a.data_hora) > new Date(b.data_hora) ? a : b
+      // Filtrar todos os pedidos ativos
+      const pedidosAtivos = pedidos.filter(pedido => PedidoService.isPedidoAtivo(pedido.status));
+      // Pega o mais recente como atual
+      let pedidoAtivoMaisRecente = null;
+      if (pedidosAtivos.length > 0) {
+        pedidoAtivoMaisRecente = pedidosAtivos.reduce((a, b) =>
+          new Date(a.data_hora) > new Date(b.data_hora) ? a : b
+        );
+      }
+
+      // O histórico são todos os outros pedidos (inclusive ativos antigos)
+      const pedidosHistorico = pedidos.filter(
+        pedido => !PedidoService.isPedidoAtivo(pedido.status) ||
+          (pedidoAtivoMaisRecente && pedido.pedido_id !== pedidoAtivoMaisRecente.pedido_id && PedidoService.isPedidoAtivo(pedido.status))
       );
-    }
 
-    // O histórico são todos os outros pedidos (inclusive ativos antigos)
-    const pedidosHistorico = pedidos.filter(
-      pedido => !PedidoService.isPedidoAtivo(pedido.status) ||
-        (pedidoAtivoMaisRecente && pedido.pedido_id !== pedidoAtivoMaisRecente.pedido_id && PedidoService.isPedidoAtivo(pedido.status))
-    );
+      // Processar pedido atual
+      if (pedidoAtivoMaisRecente) {
+        const pedidoAtualFormatado = await formatarPedidoAtual(pedidoAtivoMaisRecente);
+        setPedidoAtual(pedidoAtualFormatado);
+      } else {
+        setPedidoAtual(null);
+      }
 
-    // Processar pedido atual
-    if (pedidoAtivoMaisRecente) {
-      const pedidoAtualFormatado = await formatarPedidoAtual(pedidoAtivoMaisRecente);
-      setPedidoAtual(pedidoAtualFormatado);
-    } else {
+      // Processar histórico (ordenar por data mais recente primeiro)
+      const historicoOrdenado = pedidosHistorico.sort((a, b) =>
+        new Date(b.data_hora) - new Date(a.data_hora)
+      );
+
+      const historicoFormatado = await Promise.all(
+        historicoOrdenado.map(pedido => formatarPedidoHistorico(pedido))
+      );
+
+      setHistoricoPedidos(historicoFormatado);
+
+    } catch (error) {
       setPedidoAtual(null);
+      setHistoricoPedidos([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-
-    // Processar histórico (ordenar por data mais recente primeiro)
-    const historicoOrdenado = pedidosHistorico.sort((a, b) =>
-      new Date(b.data_hora) - new Date(a.data_hora)
-    );
-
-    const historicoFormatado = await Promise.all(
-      historicoOrdenado.map(pedido => formatarPedidoHistorico(pedido))
-    );
-
-    setHistoricoPedidos(historicoFormatado);
-
-  } catch (error) {
-    setPedidoAtual(null);
-    setHistoricoPedidos([]);
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
+  };
 
   const obterNomeRestaurante = async (restauranteId) => {
     try {
@@ -165,13 +164,15 @@ const loadPedidos = async () => {
     const nomeRestaurante = await obterNomeRestaurante(pedido.restaurante_id);
     return {
       id: pedido.pedido_id,
+      pedidoId: pedido.pedido_id, // Adicionar pedidoId para o modal
       horario: hora,
       nomeRestaurante,
       primeiroItem: pedido.observacao || `Pedido #${pedido.pedido_id}`,
       status: pedido.status,
       precoTotal: pedido.preco_total,
       localizacao: pedido.localizacao,
-      observacao: pedido.observacao
+      observacao: pedido.observacao,
+      pedido: pedido // Passar o pedido completo
     };
   };
 
@@ -197,12 +198,8 @@ const loadPedidos = async () => {
   };
 
   const handleVisualizarPedido = () => {
-    if (pedidoAtual && navigation?.navigate) {
-      navigation.navigate('PedidoDetalhes', { 
-        pedidoId: pedidoAtual.id,
-        pedido: pedidoAtual 
-      });
-    }
+    // Não navegar para outra tela, apenas abrir o modal
+    // O modal já está sendo gerenciado pelo CurrentOrder
   };
 
   const handlePecaNovamanete = async (pedido) => {
@@ -283,6 +280,8 @@ const loadPedidos = async () => {
             primeiroItem={pedidoAtual.primeiroItem}
             precoTotal={pedidoAtual.precoTotal}
             status={pedidoAtual.status}
+            pedidoId={pedidoAtual.pedidoId}
+            pedido={pedidoAtual.pedido}
             onVisualizarPress={handleVisualizarPedido}
           />
         ) : (

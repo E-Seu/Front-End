@@ -60,7 +60,7 @@ const MOCK_PRODUCTS = [
     restaurante_id: 1,
     nome: "Feijoada Especial",
     descricao: "Feijoada completa com arroz, couve, farofa e torresmo",
-    valor: "49.90",
+    preco: 49.90,
     tempo_preparo: 40,
     disponivel: true,
     selos: {
@@ -78,19 +78,19 @@ class RestaurantService {
   static normalizeRestaurantData(restaurant) {
     return {
       ...restaurant,
-      id: restaurant.restaurante_id,
-      restaurante_id: restaurant.restaurante_id,
-      localizacao: restaurant.local,
-      avaliacao: restaurant.numero_estrelas,
-      saldo: typeof restaurant.saldo === 'string' ? parseFloat(restaurant.saldo) : restaurant.saldo
+      id: restaurant.restaurante_id || restaurant.id,
+      restaurante_id: restaurant.restaurante_id || restaurant.id,
+      localizacao: restaurant.local || restaurant.localizacao,
+      numero_estrelas: Number(restaurant.numero_estrelas) || 0,
+      avaliacao: Number(restaurant.numero_estrelas) || 0,
+      saldo: typeof restaurant.saldo === 'string' ? parseFloat(restaurant.saldo) : (restaurant.saldo || 0)
     };
   }
 
-  // Método para normalizar dados do produto  // ✅ CORREÇÃO: Normalização considerando que API usa 'preco' não 'valor'
+  // Método para normalizar dados do produto
   static normalizeProductData(product) {
     let valorNormalizado;
     
-    // ✅ CORREÇÃO: API retorna 'preco', não 'valor'
     const precoFromApi = product.preco || product.valor; // Tentar ambos para compatibilidade
     
     if (precoFromApi === null || precoFromApi === undefined) {
@@ -115,7 +115,6 @@ class RestaurantService {
       ...product,
       id: product.produto_id,
       produto_id: product.produto_id,
-      // ✅ CORREÇÃO: Mapear 'preco' da API para 'valor' do frontend
       valor: valorNormalizado,
       preco: valorNormalizado, // Manter ambos para compatibilidade
       // Garantir que disponivel seja boolean
@@ -127,72 +126,6 @@ class RestaurantService {
     };
     
     return normalized;
-  }
-
-// ✅ CORREÇÃO: Adicionar produto com valor como string
-static async addProduct(restaurantId, productData) {
-  try {
-    console.log(`🔄 Adicionando produto ao restaurante ${restaurantId}:`, productData);
-    
-    // Estrutura esperada pela API com valores corretos
-    const apiProductData = {
-      nome: productData.nome,
-      descricao: productData.descricao,
-      valor: parseFloat(productData.valor).toFixed(2), // ✅ String com 2 decimais
-      tempo_preparo: productData.tempo_preparo || 30,
-      disponivel: productData.disponivel !== undefined ? productData.disponivel : true,
-      selos: productData.selos || {
-        sem_lactose: false,
-        sem_gluten: false,
-        sem_amendoim: false,
-        vegano: false
-      }
-    };
-    
-    console.log('📦 Dados formatados para API:', apiProductData);
-    
-    const response = await apiClient.post(`/restaurantes/${restaurantId}/produto`, apiProductData);
-    
-    console.log(`✅ Produto adicionado:`, response.data);
-    return this.normalizeProductData(response.data);
-  } catch (error) {
-    console.error(`❌ Erro ao adicionar produto ao restaurante ${restaurantId}:`, error.message);
-    
-    if (error.response) {
-      console.error('📡 Detalhes do erro:', error.response.data);
-    }
-    
-    return null;
-  }
-}
-
-  // Método de teste de conexão
-  static async testConnection() {
-    try {
-      console.log('🔍 Testando conexão com a API...');
-      
-      const response = await apiClient.get('/restaurantes');
-      
-      console.log('✅ API funcionando! Dados brutos:', response.data);
-      
-      // Normalizar dados da API
-      const normalizedData = response.data.map(restaurant => this.normalizeRestaurantData(restaurant));
-      console.log('🔄 Dados normalizados:', normalizedData);
-      
-      return { success: true, data: normalizedData };
-    } catch (error) {
-      console.log('❌ Erro de conexão:', error.message);
-      
-      if (error.code === 'ECONNABORTED') {
-        console.log('⏰ Timeout na conexão');
-      } else if (error.code === 'NETWORK_ERROR') {
-        console.log('🌐 Erro de rede');
-      } else if (error.response) {
-        console.log('📡 Resposta da API:', error.response.status, error.response.data);
-      }
-      
-      return { success: false, error: error.message };
-    }
   }
 
   // Buscar todos os restaurantes
@@ -267,40 +200,20 @@ static async addProduct(restaurantId, productData) {
     }
   }
 
-  // Atualizar status do restaurante
-  static async updateRestaurantStatus(id, disponivel) {
-    try {
-      console.log(`🔄 Atualizando status do restaurante ${id} para ${disponivel}...`);
-      
-      // CORRIGIDO: Usar query parameter como no backend
-      const response = await apiClient.put(`/restaurantes/${id}/disponivel?disponivel=${disponivel}`);
-      
-      const normalizedData = this.normalizeRestaurantData(response.data);
-      console.log(`✅ Status do restaurante ${id} atualizado`);
-      return normalizedData;
-    } catch (error) {
-      console.log(`📦 Erro ao atualizar status do restaurante ${id}:`, error.message);
-      
-      // Fallback para mock
-      const restaurant = MOCK_RESTAURANTS.find(r => r.restaurante_id === parseInt(id));
-      if (restaurant) {
-        restaurant.disponivel = disponivel;
-        return this.normalizeRestaurantData(restaurant);
-      }
-      return null;
-    }
-  }
-
-  // Adicionar produto ao restaurante
   static async addProduct(restaurantId, productData) {
     try {
       console.log(`🔄 Adicionando produto ao restaurante ${restaurantId}:`, productData);
       
-      // Estrutura esperada pela API
+      const precoValue = productData.preco || productData.valor || 0;
+      
+      if (precoValue <= 0) {
+        throw new Error('Preço deve ser maior que zero');
+      }
+      
       const apiProductData = {
         nome: productData.nome,
         descricao: productData.descricao,
-        valor: productData.valor.toString(), // API espera string
+        preco: precoValue, 
         tempo_preparo: productData.tempo_preparo || 30,
         disponivel: productData.disponivel !== undefined ? productData.disponivel : true,
         selos: productData.selos || {
@@ -310,6 +223,8 @@ static async addProduct(restaurantId, productData) {
           vegano: false
         }
       };
+      
+      console.log('📦 Dados formatados para API:', apiProductData);
       
       const response = await apiClient.post(`/restaurantes/${restaurantId}/produto`, apiProductData);
       
@@ -322,7 +237,7 @@ static async addProduct(restaurantId, productData) {
         console.error('📡 Detalhes do erro:', error.response.data);
       }
       
-      return null;
+      throw error;
     }
   }
 
@@ -331,11 +246,16 @@ static async addProduct(restaurantId, productData) {
     try {
       console.log(`🔄 Atualizando produto ${productId} do restaurante ${restaurantId}:`, productData);
       
-      // Estrutura esperada pela API (apenas os campos editáveis)
+      const precoValue = productData.preco || productData.valor || 0;
+      
+      if (precoValue <= 0) {
+        throw new Error('Preço deve ser maior que zero');
+      }
+      
       const apiProductData = {
         nome: productData.nome,
         descricao: productData.descricao,
-        valor: productData.valor.toString(), // API espera string
+        preco: precoValue,
         tempo_preparo: productData.tempo_preparo || 30,
         disponivel: productData.disponivel !== undefined ? productData.disponivel : true,
         selos: productData.selos || {
@@ -357,6 +277,31 @@ static async addProduct(restaurantId, productData) {
         console.error('📡 Detalhes do erro:', error.response.data);
       }
       
+      throw error; 
+    }
+  }
+
+  // Atualizar status do restaurante
+  static async updateRestaurantStatus(id, disponivel) {
+    try {
+      console.log(`🔄 Atualizando status do restaurante ${id} para ${disponivel}...`);
+      
+      const response = await apiClient.put(`/restaurantes/${id}/disponivel`, {
+        disponivel: disponivel
+      });
+      
+      const normalizedData = this.normalizeRestaurantData(response.data);
+      console.log(`✅ Status do restaurante ${id} atualizado`);
+      return normalizedData;
+    } catch (error) {
+      console.log(`📦 Erro ao atualizar status do restaurante ${id}:`, error.message);
+      
+      // Fallback para mock
+      const restaurant = MOCK_RESTAURANTS.find(r => r.restaurante_id === parseInt(id));
+      if (restaurant) {
+        restaurant.disponivel = disponivel;
+        return this.normalizeRestaurantData(restaurant);
+      }
       return null;
     }
   }
@@ -366,8 +311,9 @@ static async addProduct(restaurantId, productData) {
     try {
       console.log(`🔄 Atualizando disponibilidade do produto ${productId} para ${disponivel}...`);
       
-      // CORRIGIDO: Usar query parameter como no backend
-      const response = await apiClient.put(`/restaurantes/${restaurantId}/produto/${productId}/disponivel?disponivel=${disponivel}`);
+      const response = await apiClient.put(`/restaurantes/${restaurantId}/produto/${productId}/disponivel`, {
+        disponivel: disponivel
+      });
       
       console.log(`✅ Disponibilidade do produto ${productId} atualizada:`, response.data);
       return this.normalizeProductData(response.data);
@@ -387,7 +333,6 @@ static async addProduct(restaurantId, productData) {
     try {
       console.log(`🔄 Removendo produto ${productId} do restaurante ${restaurantId}...`);
       
-      // CORRIGIDO: Rota correta do backend
       const response = await apiClient.delete(`/restaurante/${restaurantId}/produto/${productId}`);
       
       console.log(`✅ Produto ${productId} removido com sucesso`);
@@ -423,7 +368,6 @@ static async addProduct(restaurantId, productData) {
     try {
       console.log(`🔄 Atualizando saldo do restaurante ${restaurantId} para ${saldo}...`);
       
-      // CORRIGIDO: Usar query parameter como no backend
       const response = await apiClient.put(`/restaurante/${restaurantId}/saldo?saldo=${saldo}`);
       
       console.log(`✅ Saldo do restaurante ${restaurantId} atualizado:`, response.data);

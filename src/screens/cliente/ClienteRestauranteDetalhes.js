@@ -183,12 +183,13 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
     local: restaurant?.local || restaurant?.localizacao || "Local do restaurante",
     horarioAbertura: restaurant?.horario_abertura || "08:00",
     horarioFechamento: restaurant?.horario_fechamento || "22:00",
-    numeroEstrelas: restaurant?.numero_estrelas || restaurant?.avaliacao || 4.5,
+    numeroEstrelas: restaurant?.numero_estrelas || 0,
     isAberto: restaurant?.disponivel !== undefined ? restaurant.disponivel : true,
     telefone: restaurant?.telefone || "",
     tipo_restaurante: restaurant?.tipo_restaurante || "",
     saldo: restaurant?.saldo || 0
   };
+
 
   const handleBackPress = () => {
     navigation.goBack();
