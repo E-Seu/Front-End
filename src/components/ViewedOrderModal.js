@@ -24,6 +24,7 @@ const ViewedOrderModal = ({
   status: initialStatus = '',
   nomeEntregador: initialNomeEntregador = '',
   itens: initialItens = [],
+  onStatusChange // <-- NOVO: callback do pai
 }) => {
   const [pedidoData, setPedidoData] = useState({
     nomeRestaurante: initialNomeRestaurante,
@@ -61,13 +62,15 @@ const ViewedOrderModal = ({
       const pedido = await PedidoService.buscarPedido(pedidoId);
       
       if (pedido) {
+        // Pega os itens do pedido, seja do campo produtos, pedido_produtos ou itens
+        let itensPedido = pedido.produtos || pedido.pedido_produtos || pedido.itens || pedido.items || initialItens;
         setPedidoData({
           nomeRestaurante: pedido.nomeRestaurante || initialNomeRestaurante,
           localizacao: pedido.localizacao || pedido.endereco || pedido.local || initialLocalizacao,
           precoTotal: pedido.preco_total || pedido.total || initialPrecoTotal,
           status: pedido.status || initialStatus,
           nomeEntregador: pedido.entregador_nome || pedido.nomeEntregador || initialNomeEntregador,
-          itens: pedido.itens || pedido.items || initialItens,
+          itens: itensPedido,
         });
       }
     } catch (error) {
@@ -99,26 +102,30 @@ const ViewedOrderModal = ({
         <Text style={styles.emptyCartText}>Nenhum item no pedido.</Text>
       );
     }
-    return pedidoData.itens.map((item, idx) => (
-      <View key={idx} style={styles.cartItem}>
-        <View style={styles.itemNameContainer}>
-          <Text style={styles.itemQuantity}>{item.quantidade || item.qtd || item.quant || 1}x</Text>
-          <Text style={styles.itemName}>{item.nome || item.nome_produto || item.produto}</Text>
+    return pedidoData.itens.map((item, idx) => {
+      // Se vier do pedido_produtos, o produto pode estar aninhado
+      const nomeProduto = item.nome || item.nome_produto || (item.produto && (item.produto.nome || item.produto.nome_produto)) || item.produto || '';
+      const preco = item.preco_item !== undefined ? item.preco_item : (item.preco || item.valor || item.preco_unitario || (item.produto && (item.produto.preco || item.produto.valor)) || 0);
+      return (
+        <View key={idx} style={styles.cartItem}>
+          <View style={styles.itemNameContainer}>
+            <Text style={styles.itemQuantity}>{item.quantidade || item.qtd || item.quant || 1}x</Text>
+            <Text style={styles.itemName}>{nomeProduto}</Text>
+          </View>
+          <Text style={styles.itemPrice}>
+            R$ {Number(preco).toFixed(2)}
+          </Text>
         </View>
-        <Text style={styles.itemPrice}>
-          R$ {Number(item.preco || item.valor || item.preco_unitario || 0).toFixed(2)}
-        </Text>
-      </View>
-    ));
+      );
+    });
   };
 
   const handleCancelarPedido = async () => {
     if (!pedidoId) return;
-    
     try {
       await PedidoService.cancelarPedido(pedidoId);
-      // Atualizar dados após cancelamento
       loadPedidoData();
+      if (onStatusChange) onStatusChange(); // <-- chama callback para atualizar lista
     } catch (error) {
       console.error('Erro ao cancelar pedido:', error);
     }

@@ -128,6 +128,20 @@ const handleFinalizarPedido = async () => {
       return;
     }
 
+    // Montar array de produtos para o backend
+    const produtosPedido = Object.entries(cartItems).map(([productId, quantidade]) => {
+      const produto = produtos.find(p => (p.id || p.produto_id).toString() === productId);
+      if (produto) {
+        const preco_item = produto.valor !== undefined ? parseFloat(produto.valor) : (produto.preco !== undefined ? parseFloat(produto.preco) : 0);
+        return {
+          produto_id: produto.id || produto.produto_id,
+          quantidade,
+          preco_item
+        };
+      }
+      return null;
+    }).filter(item => item !== null);
+
     // ✅ DADOS VALIDADOS para o pedido
     const pedidoData = {
       cliente_id: clienteId,
@@ -137,7 +151,8 @@ const handleFinalizarPedido = async () => {
       preco_total: total,
       localizacao: localEntrega.trim(),
       data_hora: new Date().toISOString(),
-      observacao: criarObservacaoComItens()
+      observacao: criarObservacaoComItens(),
+      produtos: produtosPedido
     };
 
     console.log('📦 Dados finais do pedido:', pedidoData);

@@ -118,6 +118,10 @@ const ClientePedidos = ({ navigation, route }) => {
     }
   };
 
+    const atualizarPedidos = async () => {
+    await loadPedidos();
+  };
+
   const obterNomeRestaurante = async (restauranteId) => {
     try {
       if (restaurantesCache.has(restauranteId)) {
@@ -254,7 +258,7 @@ const ClientePedidos = ({ navigation, route }) => {
     );
   }
 
-  return (
+ return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>PEDIDOS</Text>
@@ -283,6 +287,7 @@ const ClientePedidos = ({ navigation, route }) => {
             pedidoId={pedidoAtual.pedidoId}
             pedido={pedidoAtual.pedido}
             onVisualizarPress={handleVisualizarPedido}
+            onPedidoAtualAlterado={atualizarPedidos} // <-- NOVO: passa callback
           />
         ) : (
           <EmptyStateComponent 

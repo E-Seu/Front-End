@@ -226,22 +226,32 @@ const RestaurantOrderModal = ({
   };
 
   const renderItens = () => {
-    if (!Array.isArray(pedidoData.itens) || pedidoData.itens.length === 0) {
+    // Unifica possíveis campos de produtos/itens vindos do backend
+    let itens = pedidoData.itens || pedidoData.produtos || pedidoData.pedido_produtos || [];
+    if (!Array.isArray(itens) || itens.length === 0) {
       return (
         <Text style={styles.emptyCartText}>Nenhum item no pedido.</Text>
       );
     }
-    return pedidoData.itens.map((item, idx) => (
-      <View key={idx} style={styles.cartItem}>
-        <View style={styles.itemNameContainer}>
-          <Text style={styles.itemQuantity}>{item.quantidade || item.qtd || item.quant || 1}x</Text>
-          <Text style={styles.itemName}>{item.nome || item.nome_produto || item.produto}</Text>
+    // Normaliza cada item para garantir que campos estejam acessíveis
+    return itens.map((item, idx) => {
+      // Se vier aninhado (ex: { produto: { nome, ... }, quantidade, preco_item })
+      const produto = item.produto || item;
+      const nome = produto.nome || produto.nome_produto || produto.produto || item.nome || item.nome_produto || item.produto;
+      const quantidade = item.quantidade || item.qtd || item.quant || 1;
+      const preco = item.preco_item || item.preco || item.valor || item.preco_unitario || produto.preco || 0;
+      return (
+        <View key={idx} style={styles.cartItem}>
+          <View style={styles.itemNameContainer}>
+            <Text style={styles.itemQuantity}>{quantidade}x</Text>
+            <Text style={styles.itemName}>{nome}</Text>
+          </View>
+          <Text style={styles.itemPrice}>
+            R$ {Number(preco).toFixed(2)}
+          </Text>
         </View>
-        <Text style={styles.itemPrice}>
-          R$ {Number(item.preco || item.valor || item.preco_unitario || 0).toFixed(2)}
-        </Text>
-      </View>
-    ));
+      );
+    });
   };
 
   const renderBottomActions = () => {

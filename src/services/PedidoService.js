@@ -45,16 +45,19 @@ class PedidoService {
 
   // Método para normalizar dados do pedido
   static normalizePedidoData(pedido) {
+    // Garante que o campo 'produtos' sempre exista, usando 'pedido_produtos' se necessário
+    let produtos = pedido.produtos;
+    if (!produtos && Array.isArray(pedido.pedido_produtos)) {
+      produtos = pedido.pedido_produtos;
+    }
     return {
       ...pedido,
       id: pedido.pedido_id,
       pedido_id: pedido.pedido_id,
-      // Converter preco_total para number se necessário
       preco_total: typeof pedido.preco_total === 'string' ? parseFloat(pedido.preco_total) : pedido.preco_total,
-      // Garantir que data_hora seja string ISO
       data_hora: typeof pedido.data_hora === 'string' ? pedido.data_hora : new Date(pedido.data_hora).toISOString(),
-      // Garantir que observacao seja string ou null
-      observacao: pedido.observacao || null
+      observacao: pedido.observacao || null,
+      produtos: produtos || []
     };
   }
 
@@ -241,7 +244,7 @@ class PedidoService {
   static async criarPedido(pedidoData) {
     try {
       console.log('🔄 Criando pedido (dados recebidos):', JSON.stringify(pedidoData, null, 2));
-      
+
       // Validar dados obrigatórios
       if (!pedidoData.cliente_id) {
         throw new Error('cliente_id é obrigatório');
@@ -252,84 +255,68 @@ class PedidoService {
       if (!pedidoData.localizacao) {
         throw new Error('localizacao é obrigatória');
       }
-      
-      // Estrutura correta para API FastAPI usando PedidoBase
+      if (!Array.isArray(pedidoData.produtos) || pedidoData.produtos.length === 0) {
+        throw new Error('produtos é obrigatório e deve ser um array');
+      }
+
+
+      // Calcular preco_item e preco_total
+      let preco_total = 0;
+      const produtos = pedidoData.produtos.map(prod => {
+        const preco_item = prod.preco_item !== undefined
+          ? parseFloat(prod.preco_item)
+          : (prod.preco !== undefined ? parseFloat(prod.preco) : 0);
+        const quantidade = prod.quantidade || 1;
+        preco_total += preco_item * quantidade;
+        return {
+          produto_id: prod.produto_id,
+          quantidade,
+          preco_item
+        };
+      });
+
       const apiPedidoData = {
         cliente_id: parseInt(pedidoData.cliente_id),
         restaurante_id: parseInt(pedidoData.restaurante_id),
         entregador_id: pedidoData.entregador_id ? parseInt(pedidoData.entregador_id) : null,
         status: pedidoData.status || "aguardando",
-        preco_total: parseFloat(pedidoData.preco_total || 0).toFixed(2),
+        preco_total: preco_total.toFixed(2),
         localizacao: String(pedidoData.localizacao),
-        data_hora: new Date().toISOString(),
-        observacao: pedidoData.observacao ? String(pedidoData.observacao) : null
+        data_hora: pedidoData.data_hora ? String(pedidoData.data_hora) : new Date().toISOString(),
+        observacao: pedidoData.observacao ? String(pedidoData.observacao) : null,
+        produtos
       };
-      
-      console.log('📦 Dados formatados para API:', JSON.stringify(apiPedidoData, null, 2));
-      
+
+      // LOGS DETALHADOS PARA DEBUG
+      console.log('� [DEBUG] Array produtos recebido:', JSON.stringify(pedidoData.produtos, null, 2));
+      console.log('🟣 [DEBUG] Array produtos montado:', JSON.stringify(produtos, null, 2));
+      console.log('🟣 [DEBUG] Objeto apiPedidoData montado:', JSON.stringify(apiPedidoData, null, 2));
+
       // Verificar se todos os campos obrigatórios estão presentes
-      const requiredFields = ['cliente_id', 'restaurante_id', 'status', 'preco_total', 'localizacao', 'data_hora'];
-      const missingFields = requiredFields.filter(field => 
-        apiPedidoData[field] === undefined || 
-        apiPedidoData[field] === null || 
+      const requiredFields = ['cliente_id', 'restaurante_id', 'status', 'preco_total', 'localizacao', 'data_hora', 'produtos'];
+      const missingFields = requiredFields.filter(field =>
+        apiPedidoData[field] === undefined ||
+        apiPedidoData[field] === null ||
         apiPedidoData[field] === '' ||
         (field === 'preco_total' && parseFloat(apiPedidoData[field]) < 0)
       );
-      
+
       if (missingFields.length > 0) {
         console.error('❌ Campos obrigatórios ausentes/inválidos:', missingFields);
         throw new Error(`Campos obrigatórios ausentes/inválidos: ${missingFields.join(', ')}`);
       }
-      
-      try {
-        // Tentar criar pedido na API usando POST /pedidos
-        const response = await apiClient.post('/pedidos', apiPedidoData);
-        const normalizedData = this.normalizePedidoData(response.data);
-        
-        console.log('✅ Pedido criado com sucesso na API:', normalizedData);
-        
-        // Adicionar ao cache para aparecer imediatamente
-        this._pedidosCache.push(normalizedData);
-        console.log('📦 Pedido adicionado ao cache. Total no cache:', this._pedidosCache.length);
-        
-        return normalizedData;
-      } catch (apiError) {
-        console.log('❌ Erro na API, salvando no cache local:', apiError.message);
-        
-        if (apiError.response) {
-          console.error('📡 Status do erro:', apiError.response.status);
-          console.error('📡 Dados do erro:', JSON.stringify(apiError.response.data, null, 2));
-          
-          // Tentar extrair detalhes do erro 422
-          if (apiError.response.status === 422) {
-            console.error('🔍 Erro de validação (422):', JSON.stringify(apiError.response.data, null, 2));
-            
-            // Mostrar campos que faltam
-            if (apiError.response.data.detail) {
-              apiError.response.data.detail.forEach(err => {
-                console.error(`❌ Campo: ${err.loc.join('.')} - Erro: ${err.msg}`);
-              });
-            }
-          }
-        }
-        
-        // Mesmo com erro da API, criar no cache local para teste
-        const novoPedido = {
-          ...apiPedidoData,
-          pedido_id: Date.now(), // ID temporário baseado no timestamp
-          id: Date.now(),
-          preco_total: parseFloat(apiPedidoData.preco_total) // Converter de volta para number no cache
-        };
-        
-        const normalizedData = this.normalizePedidoData(novoPedido);
-        
-        // Adicionar ao cache local
-        this._pedidosCache.push(normalizedData);
-        console.log('📦 Pedido adicionado ao cache local:', normalizedData);
-        console.log('📦 Cache atual:', this._pedidosCache);
-        
-        return normalizedData;
-      }
+
+      // Tentar criar pedido na API usando POST /pedidos
+      const response = await apiClient.post('/pedidos', apiPedidoData);
+      const normalizedData = this.normalizePedidoData(response.data);
+
+      console.log('✅ Pedido criado com sucesso na API:', normalizedData);
+
+      // Adicionar ao cache para aparecer imediatamente
+      this._pedidosCache.push(normalizedData);
+      console.log('📦 Pedido adicionado ao cache. Total no cache:', this._pedidosCache.length);
+
+      return normalizedData;
     } catch (error) {
       console.error('❌ Erro ao criar pedido:', error.message);
       throw error; // Re-throw para que o CartModal possa tratar
