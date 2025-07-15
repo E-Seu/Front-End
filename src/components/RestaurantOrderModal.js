@@ -59,14 +59,14 @@ const RestaurantOrderModal = ({
     try {
       setLoading(true);
       const pedido = await PedidoService.buscarPedido(pedidoId);
-      
+      let itensPedido = pedido.produtos || pedido.pedido_produtos || pedido.itens || pedido.items || initialItens;
       if (pedido) {
         setPedidoData({
           nomeCliente: `Cliente ${pedido.cliente_id}`, // Por enquanto mantém como Cliente {id}
           localizacao: pedido.localizacao || pedido.endereco || pedido.local || initialLocalizacao,
           precoTotal: pedido.preco_total || pedido.total || initialPrecoTotal,
           status: pedido.status || initialStatus,
-          itens: pedido.itens || pedido.items || initialItens,
+          itens: itensPedido,
         });
       }
     } catch (error) {
@@ -225,34 +225,56 @@ const RestaurantOrderModal = ({
     }
   };
 
-  const renderItens = () => {
-    // Unifica possíveis campos de produtos/itens vindos do backend
-    let itens = pedidoData.itens || pedidoData.produtos || pedidoData.pedido_produtos || [];
-    if (!Array.isArray(itens) || itens.length === 0) {
-      return (
-        <Text style={styles.emptyCartText}>Nenhum item no pedido.</Text>
-      );
-    }
-    // Normaliza cada item para garantir que campos estejam acessíveis
-    return itens.map((item, idx) => {
-      // Se vier aninhado (ex: { produto: { nome, ... }, quantidade, preco_item })
-      const produto = item.produto || item;
-      const nome = produto.nome || produto.nome_produto || produto.produto || item.nome || item.nome_produto || item.produto;
-      const quantidade = item.quantidade || item.qtd || item.quant || 1;
-      const preco = item.preco_item || item.preco || item.valor || item.preco_unitario || produto.preco || 0;
-      return (
-        <View key={idx} style={styles.cartItem}>
-          <View style={styles.itemNameContainer}>
-            <Text style={styles.itemQuantity}>{quantidade}x</Text>
-            <Text style={styles.itemName}>{nome}</Text>
-          </View>
-          <Text style={styles.itemPrice}>
-            R$ {Number(preco).toFixed(2)}
-          </Text>
+const renderItens = () => {
+  // Busca itens do pedido em todas as possíveis chaves, igual ao ViewedOrderModal
+  let itensPedido =
+    pedidoData.produtos ||
+    pedidoData.pedido_produtos ||
+    pedidoData.itens ||
+    pedidoData.items ||
+    [];
+
+  if (!Array.isArray(itensPedido) || itensPedido.length === 0) {
+    return (
+      <Text style={styles.emptyCartText}>Nenhum item no pedido.</Text>
+    );
+  }
+
+  return itensPedido.map((item, idx) => {
+    // Nome do produto: tenta pegar do objeto aninhado ou direto
+    const nomeProduto =
+      item.nome ||
+      item.nome_produto ||
+      (item.produto && (item.produto.nome || item.produto.nome_produto)) ||
+      (typeof item.produto === 'string' ? item.produto : '') ||
+      '';
+
+    // Preço do produto: tenta pegar do objeto aninhado ou direto
+    const preco =
+      item.preco_item !== undefined
+        ? item.preco_item
+        : item.preco ||
+          item.valor ||
+          item.preco_unitario ||
+          (item.produto && (item.produto.preco || item.produto.valor)) ||
+          0;
+
+    // Quantidade
+    const quantidade = item.quantidade || item.qtd || item.quant || 1;
+
+    return (
+      <View key={idx} style={styles.cartItem}>
+        <View style={styles.itemNameContainer}>
+          <Text style={styles.itemQuantity}>{quantidade}x</Text>
+          <Text style={styles.itemName}>{nomeProduto}</Text>
         </View>
-      );
-    });
-  };
+        <Text style={styles.itemPrice}>
+          R$ {Number(preco).toFixed(2)}
+        </Text>
+      </View>
+    );
+  });
+};
 
   const renderBottomActions = () => {
     const { status } = pedidoData;
