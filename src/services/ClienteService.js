@@ -95,6 +95,18 @@ class ClienteService {
     }
   }
 
+    static async getNomeClientePorUsuarioId(usuarioId) {
+    try {
+      console.log(`🔄 Buscando nome do cliente pelo usuario_id ${usuarioId}...`);
+      const response = await apiClient.get(`/usuario/${usuarioId}/nome`);
+      console.log(`✅ Nome do cliente encontrado:`, response.data);
+      return response.data.nome;
+    } catch (error) {
+      console.log(`📦 Erro ao buscar nome do cliente pelo usuario_id ${usuarioId}:`, error.message);
+      return null;
+    }
+  }
+
   // ✅ Listar favoritos do cliente
   static async listarFavoritos(clienteId) {
     try {

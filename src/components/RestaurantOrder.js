@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import RestaurantOrderModal from './RestaurantOrderModal';
+import ClienteService from '../services/ClienteService';
 
-const RestaurantOrder = ({ 
+const RestaurantOrder = ({
   horario = "hora",
-  nomeCliente = "Cliente Exemplo",
+  nomeCliente: initialNomeCliente = "Cliente Exemplo",
   primeiroItem = "item exemplo",
   status = "",
   precoTotal = 0,
@@ -17,6 +18,33 @@ const RestaurantOrder = ({
   const [modalVisible, setModalVisible] = useState(false);
   const [modalKey, setModalKey] = useState(0);
   const [currentStatus, setCurrentStatus] = useState(status);
+  const [nomeCliente, setNomeCliente] = useState(initialNomeCliente);
+  const [clienteId, setClienteId] = useState(pedido.cliente_id || pedido.clienteId || '');
+
+  // Buscar nome real do cliente assim que o componente for montado ou pedido mudar
+  useEffect(() => {
+    const fetchNomeCliente = async () => {
+      let usuarioId = pedido.usuario_id || pedido.usuarioId;
+      let idCliente = pedido.cliente_id || pedido.clienteId || '';
+      setClienteId(idCliente);
+
+      // Se não vier direto, tenta buscar pelo cliente_id
+      if (!usuarioId && idCliente) {
+        const clienteData = await ClienteService.getCliente(idCliente);
+        usuarioId = clienteData?.usuario_id;
+      }
+      if (usuarioId) {
+        const nome = await ClienteService.getNomeClientePorUsuarioId(usuarioId);
+        if (nome) setNomeCliente(nome);
+        else setNomeCliente(initialNomeCliente);
+      } else {
+        setNomeCliente(initialNomeCliente);
+      }
+    };
+
+    fetchNomeCliente();
+    // eslint-disable-next-line
+  }, [pedido]);
 
   // Atualizar status local quando prop mudar
   useEffect(() => {
@@ -42,10 +70,7 @@ const RestaurantOrder = ({
   };
 
   const handleStatusUpdated = (pedidoId, novoStatus) => {
-    console.log(`Status do pedido ${pedidoId} atualizado para ${novoStatus}`);
     setCurrentStatus(novoStatus);
-    
-    // Notificar componente pai (RestaurantePedidos)
     if (onStatusUpdated) {
       onStatusUpdated(pedidoId, novoStatus);
     }
@@ -101,6 +126,9 @@ const RestaurantOrder = ({
 
   const statusConfig = getStatusConfig(currentStatus);
 
+  // Exibe nome + #id do cliente
+  const nomeComId = `${nomeCliente}  #${clienteId}`;
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
@@ -110,7 +138,7 @@ const RestaurantOrder = ({
             <Text style={styles.pedidoFeitoText}>Pedido feito às </Text>
             <Text style={styles.horarioText}>{horario}</Text>
           </View>
-          <Text style={styles.nomeCliente}>{nomeCliente}</Text>
+          <Text style={styles.nomeCliente}>{nomeComId}</Text>
           <Text style={styles.primeiroItem} numberOfLines={1}>
             {primeiroItem}...
           </Text>
@@ -126,7 +154,7 @@ const RestaurantOrder = ({
             ) : null}
             <View style={[styles.elipse, { backgroundColor: statusConfig.elipseColor }]} />
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.visualizarButton}
             onPress={handleVisualizarPress}
             activeOpacity={0.7}
@@ -159,7 +187,6 @@ const RestaurantOrder = ({
   );
 };
 
-// Styles permanecem os mesmos...
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',

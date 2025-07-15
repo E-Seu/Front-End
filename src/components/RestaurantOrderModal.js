@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import PedidoService from '../services/PedidoService';
+import ClienteService from '../services/ClienteService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -60,9 +61,25 @@ const RestaurantOrderModal = ({
       setLoading(true);
       const pedido = await PedidoService.buscarPedido(pedidoId);
       let itensPedido = pedido.produtos || pedido.pedido_produtos || pedido.itens || pedido.items || initialItens;
+
+      // Buscar nome do cliente pela nova rota, se possível
+    let nomeCliente = initialNomeCliente;
+    let usuarioId = pedido.usuario_id || pedido.usuarioId;
+
+    // Se não vier direto, tenta buscar pelo cliente
+    if (!usuarioId && pedido.cliente_id) {
+      const cliente = await ClienteService.getCliente(pedido.cliente_id);
+      usuarioId = cliente?.usuario_id;
+    }
+    if (usuarioId) {
+      const nome = await ClienteService.getNomeClientePorUsuarioId(usuarioId);
+      if (nome) {
+        nomeCliente = nome;
+      }
+    }
       if (pedido) {
         setPedidoData({
-          nomeCliente: `Cliente ${pedido.cliente_id}`, // Por enquanto mantém como Cliente {id}
+          nomeCliente,
           localizacao: pedido.localizacao || pedido.endereco || pedido.local || initialLocalizacao,
           precoTotal: pedido.preco_total || pedido.total || initialPrecoTotal,
           status: pedido.status || initialStatus,
