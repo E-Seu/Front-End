@@ -34,18 +34,6 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Mock data para entregadores
-const MOCK_ENTREGADORES = [
-  {
-    entregador_id: 1,
-    usuario_id: 3,
-    disponivel: true,
-    veiculo: "moto",
-    localizacao_atual: "Centro",
-    saldo: 150.00
-  }
-];
-
 class EntregadorService {
   // Método para normalizar dados do entregador
   static normalizeEntregadorData(entregador) {
@@ -162,6 +150,31 @@ class EntregadorService {
       return response.data;
     } catch (error) {
       console.error('❌ Erro ao buscar pedido entregue:', error.message);
+      return null;
+    }
+  }
+
+  static async visualizarSaldoEntregador(entregadorId) {
+    try {
+      console.log(`🔄 Buscando saldo do entregador ${entregadorId}...`);
+      const response = await apiClient.get(`/entregador/${entregadorId}/saldo`);
+      console.log('✅ Saldo encontrado:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erro ao buscar saldo:', error.message);
+      return null;
+    }
+  }
+
+  // Atualizar saldo do entregador
+  static async atualizarSaldoEntregador(entregadorId, saldo) {
+    try {
+      console.log(`🔄 Atualizando saldo do entregador ${entregadorId} para ${saldo}...`);
+      const response = await apiClient.put(`/entregador/${entregadorId}/saldo`, { saldo });
+      console.log('✅ Saldo atualizado:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erro ao atualizar saldo:', error.message);
       return null;
     }
   }

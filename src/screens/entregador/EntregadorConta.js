@@ -16,29 +16,33 @@ const EntregadorConta = () => {
 
   useEffect(() => {
     carregarDadosEntregador();
+    carregarSaldoEntregador();
   }, []);
 
   const carregarDadosEntregador = async () => {
     try {
       setLoading(true);
-      
-      if (user?.usuario_id) {
-        console.log('🔄 Carregando dados do entregador para usuário:', user.usuario_id);
-        
-        // Por enquanto, vamos buscar pelo entregador_id = usuario_id
-        // Isso pode ser ajustado quando tivermos a estrutura correta no backend
-        const dados = await EntregadorService.getEntregador(user.usuario_id);
-        if (dados) {
-          console.log('🚴 Dados do entregador carregados:', dados);
-          setDadosEntregador(dados);
-        } else {
-          console.log('⚠️ Nenhum dado encontrado para o entregador');
-        }
+      if (user?.entregador_id) { // <-- usa entregador_id
+        const dados = await EntregadorService.getEntregador(user.entregador_id);
+        if (dados) setDadosEntregador(dados);
       }
     } catch (error) {
       console.error('❌ Erro ao carregar dados do entregador:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const [saldo, setSaldo] = useState(0);
+
+  const carregarSaldoEntregador = async () => {
+    try {
+      if (user?.entregador_id) { // <-- usa entregador_id
+        const saldoData = await EntregadorService.visualizarSaldoEntregador(user.entregador_id);
+        setSaldo(saldoData?.saldo || 0);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar saldo do entregador:', error);
     }
   };
 
@@ -87,12 +91,9 @@ const EntregadorConta = () => {
 
   const formatarVeiculo = (veiculo) => {
     if (!veiculo) return 'Veículo não informado';
-    
-    // Capitalizar primeira letra
     return veiculo.charAt(0).toUpperCase() + veiculo.slice(1);
   };
 
-  const saldo = dadosEntregador?.saldo || 0;
   const nome = user?.nome || 'Nome do Entregador';
   const email = user?.email || 'email@exemplo.com';
   const veiculo = dadosEntregador?.veiculo;
