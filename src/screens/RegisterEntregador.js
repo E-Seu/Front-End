@@ -9,7 +9,7 @@ const RegisterEntregador = ({ navigation }) => {
   const [formData, setFormData] = useState({
     nome: '',
     emailInstitucional: '',
-    telefone: '',
+    //telefone: '',
     senha: '',
     confirmacaoSenha: '',
   });
@@ -62,6 +62,7 @@ const RegisterEntregador = ({ navigation }) => {
         nome: formData.nome,
         email: formData.emailInstitucional,
         senha: formData.senha
+        // telefone: formData.telefone // Comentado - não está sendo utilizado
       });
       
       if (resultado.success) {
@@ -126,6 +127,7 @@ const RegisterEntregador = ({ navigation }) => {
                   autoCapitalize="none"
                 />
 
+                {/* Comentado - telefone não está sendo utilizado atualmente
                 <CustomInput
                   label="Telefone para contato"
                   placeholder="Digite seu telefone"
@@ -133,6 +135,7 @@ const RegisterEntregador = ({ navigation }) => {
                   onChangeText={(value) => handleInputChange('telefone', value)}
                   keyboardType="phone-pad"
                 />
+                */}
 
                 <CustomInput
                   label="Senha"

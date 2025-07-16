@@ -144,6 +144,58 @@ class RestaurantService {
     }
   }
 
+  static async getDadosCompletos(userId) {
+    try {
+      console.log(`🔄 Buscando dados completos para usuário ${userId}...`);
+      
+      // Buscar todos os restaurantes
+      const allRestaurants = await this.getAllRestaurants();
+      
+      // Filtrar restaurantes pelo usuário
+      const userRestaurants = allRestaurants.filter(r => r.usuario_id === parseInt(userId));
+      
+      if (userRestaurants.length > 0) {
+        const restaurant = userRestaurants[0]; // Pegar o primeiro restaurante do usuário
+        
+        // Buscar saldo atualizado (sem falhar se não conseguir)
+        let saldoAtualizado = restaurant.saldo;
+        try {
+          const saldoData = await this.getRestaurantBalance(restaurant.restaurante_id);
+          if (saldoData) {
+            saldoAtualizado = saldoData.saldo;
+          }
+        } catch (saldoError) {
+          console.log('⚠️ Erro ao buscar saldo, usando saldo do restaurante:', saldoError.message);
+        }
+        
+        const dadosCompletos = {
+          ...restaurant,
+          saldo: saldoAtualizado,
+          // Garantir que os campos existem
+          telefone: restaurant.telefone || null,
+          local: restaurant.local || restaurant.localizacao || null,
+          localizacao: restaurant.local || restaurant.localizacao || null
+        };
+        
+        console.log(`✅ Dados completos encontrados:`, dadosCompletos);
+        return dadosCompletos;
+      }
+      
+      console.log(`⚠️ Nenhum restaurante encontrado para usuário ${userId}`);
+      return null;
+    } catch (error) {
+      console.error(`❌ Erro ao buscar dados completos do usuário ${userId}:`, error.message);
+      
+      // Fallback para dados mock
+      const restaurant = MOCK_RESTAURANTS.find(r => r.usuario_id === parseInt(userId));
+      if (restaurant) {
+        return this.normalizeRestaurantData(restaurant);
+      }
+      
+      return null;
+    }
+  }
+
   // Buscar restaurante por ID
   static async getRestaurantById(id) {
     try {

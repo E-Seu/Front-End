@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import LoginService from '../services/LoginService';
 
 const AuthContext = createContext({});
@@ -6,6 +6,25 @@ const AuthContext = createContext({});
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Verificar se usuário está logado ao iniciar o app
+  useEffect(() => {
+    checkUserSession();
+  }, []);
+
+  const checkUserSession = async () => {
+    try {
+      setLoading(true);
+      const currentUser = await LoginService.getCurrentUser();
+      if (currentUser.success) {
+        setUser(currentUser.user);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar sessão:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const login = async (email, password) => {
     setLoading(true);
@@ -38,11 +57,12 @@ export const AuthProvider = ({ children }) => {
       console.log('🔓 Fazendo logout');
       
       await LoginService.logout();
-      setUser(null);
+      setUser(null); // Limpar o estado do usuário
       
       console.log('✅ Logout realizado com sucesso');
     } catch (error) {
       console.error('❌ Erro no logout:', error);
+      throw error; // Re-throw para que o componente possa tratar
     } finally {
       setLoading(false);
     }
