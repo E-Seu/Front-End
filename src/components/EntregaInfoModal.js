@@ -31,10 +31,7 @@ const EntregaInfoModal = ({
         {restauranteNome || pedido.restaurante_nome || 'Nome do Restaurante'}
       </Text>
       <Text style={styles.modalInfo}>
-        {pedido.localizacao || 'Localização não informada'}
-      </Text>
-      <Text style={styles.modalInfo}>
-        Para {pedido.destino || 'Destino não informado'}
+        Para {pedido.localizacao || 'Localização não informada'}
       </Text>
       <Text style={styles.modalInfo}>
         Entregar para <Text style={styles.modalDest}>

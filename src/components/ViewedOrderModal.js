@@ -87,6 +87,8 @@ const ViewedOrderModal = ({
         return require('../assets/images/statusImages/Aguardando-Restaurante.png');
       case 'em_preparo':
         return require('../assets/images/statusImages/Em-Preparo.png');
+      case 'pronto':
+        return require('../assets/images/statusImages/Saiu-Para-Entrega.png');
       case 'a_caminho':
         return require('../assets/images/statusImages/Saiu-Para-Entrega.png');
       case 'entregue':
@@ -169,8 +171,8 @@ const ViewedOrderModal = ({
               />
             </View>
 
-            {/* Texto do entregador (apenas se status for "a_caminho") */}
-            {pedidoData.status === 'a_caminho' && pedidoData.nomeEntregador && (
+            {/* Texto do entregador (apenas se status for "pronto") */}
+            {pedidoData.status === 'pronto' && pedidoData.nomeEntregador && (
               <View style={styles.entregadorContainer}>
                 <Text style={styles.entregadorText}>
                   <Text style={styles.entregadorNome}>{pedidoData.nomeEntregador}</Text>
