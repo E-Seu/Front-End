@@ -61,15 +61,12 @@ class EntregadorService {
   static async getEntregador(entregadorId) {
     try {
       console.log(`🔄 Buscando entregador ${entregadorId}...`);
-      
-      const response = await apiClient.get(`/entregadores/${entregadorId}`);
+      const response = await apiClient.get(`/entregador/${entregadorId}`);
       const normalizedData = this.normalizeEntregadorData(response.data);
-      
       console.log(`✅ Entregador ${entregadorId} encontrado:`, normalizedData);
       return normalizedData;
     } catch (error) {
       console.log(`📦 Erro ao buscar entregador ${entregadorId}, usando mock:`, error.message);
-      
       const entregador = MOCK_ENTREGADORES.find(e => e.entregador_id === parseInt(entregadorId));
       return entregador ? this.normalizeEntregadorData(entregador) : null;
     }
@@ -79,14 +76,11 @@ class EntregadorService {
   static async atualizarDisponibilidade(entregadorId, disponivel) {
     try {
       console.log(`🔄 Atualizando disponibilidade do entregador ${entregadorId} para ${disponivel}...`);
-      
-      const response = await apiClient.put(`/entregadores/${entregadorId}/disponivel?disponivel=${disponivel}`);
-      
+      const response = await apiClient.put(`/entregador/${entregadorId}/disponivel?disponivel=${disponivel}`);
       console.log(`✅ Disponibilidade atualizada:`, response.data);
       return response.data;
     } catch (error) {
       console.log(`📦 Erro ao atualizar disponibilidade, usando mock:`, error.message);
-      
       // Fallback para mock
       const entregador = MOCK_ENTREGADORES.find(e => e.entregador_id === parseInt(entregadorId));
       if (entregador) {
@@ -101,9 +95,8 @@ class EntregadorService {
   static async buscarPedidosDisponiveis() {
     try {
       console.log('🔄 Buscando pedidos disponíveis...');
-      
-      const response = await apiClient.get('/entregadores/pedidos-disponiveis');
-      
+      // Corrigido para o endpoint da sua API
+      const response = await apiClient.get('/pedido/disponiveis');
       console.log('✅ Pedidos disponíveis:', response.data);
       return response.data;
     } catch (error) {
@@ -112,17 +105,27 @@ class EntregadorService {
     }
   }
 
-  // Aceitar pedido
+  // Aceitar pedido (usando PUT conforme nova rota)
   static async aceitarPedido(entregadorId, pedidoId) {
     try {
       console.log(`🔄 Entregador ${entregadorId} aceitando pedido ${pedidoId}...`);
-      
-      const response = await apiClient.post(`/entregadores/${entregadorId}/aceitar-pedido/${pedidoId}`);
-      
+      const response = await apiClient.put(`/entregador/${entregadorId}/aceitar_pedido/${pedidoId}`);
       console.log('✅ Pedido aceito:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Erro ao aceitar pedido:', error.message);
+      return null;
+    }
+  }
+
+    static async rejeitarPedido(entregadorId, pedidoId) {
+    try {
+      console.log(`🔄 Entregador ${entregadorId} rejeitando pedido ${pedidoId}...`);
+      const response = await apiClient.put(`/entregador/${entregadorId}/rejeitar_pedido/${pedidoId}`);
+      console.log('✅ Pedido rejeitado:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erro ao rejeitar pedido:', error.message);
       return null;
     }
   }

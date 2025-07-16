@@ -1,12 +1,37 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
+import NovaEntregaButton from '../../components/NovaEntregaButton';
+import EntregadorService from '../../services/EntregadorService';
 
-const EntregadorHome = () => {
+const ENTREGADOR_ID = 1; // Troque pelo id real do entregador
+
+const EntregadorHome = ({ route }) => {
+  // Receba o id do entregador logado via props, contexto ou route.params
+  const entregadorId = route?.params?.entregadorId || ENTREGADOR_ID;
+
   const [disponivel, setDisponivel] = useState(false);
+  const [loadingDisponivel, setLoadingDisponivel] = useState(false);
+  const [pedidoPronto, setPedidoPronto] = useState(null);
 
-  const handleToggleDisponivel = () => {
-    setDisponivel((prev) => !prev);
+  useEffect(() => {
+    const fetchStatus = async () => {
+      const entregador = await EntregadorService.getEntregador(entregadorId);
+      setDisponivel(!!entregador?.disponivel);
+
+      const pedidos = await EntregadorService.buscarPedidosDisponiveis();
+      const pedido = pedidos.find(p => p.status === 'pronto');
+      setPedidoPronto(pedido || null);
+    };
+    fetchStatus();
+  }, [entregadorId]);
+
+  const handleToggleDisponivel = async () => {
+    setLoadingDisponivel(true);
+    const novoDisponivel = !disponivel;
+    await EntregadorService.atualizarDisponibilidade(entregadorId, novoDisponivel);
+    setDisponivel(novoDisponivel);
+    setLoadingDisponivel(false);
   };
 
   return (
@@ -19,24 +44,30 @@ const EntregadorHome = () => {
               backgroundColor: disponivel ? '#FFF5EC' : '#F2F2F2',
               borderColor: disponivel ? '#FF9900' : '#CCCCCC',
               shadowColor: disponivel ? '#FF9900' : '#888',
+              opacity: loadingDisponivel ? 0.6 : 1,
             }
           ]}
           onPress={handleToggleDisponivel}
           activeOpacity={0.85}
+          disabled={loadingDisponivel}
         >
-          <Text style={[
-            styles.disponivelText,
-            { color: disponivel ? '#FF9900' : '#888888' }
-          ]}>
-            {disponivel ? 'Disponível' : 'Indisponível'}
-          </Text>
+          {loadingDisponivel ? (
+            <ActivityIndicator color={disponivel ? '#FF9900' : '#888888'} size="small" />
+          ) : (
+            <Text style={[
+              styles.disponivelText,
+              { color: disponivel ? '#FF9900' : '#888888' }
+            ]}>
+              {disponivel ? 'Disponível' : 'Indisponível'}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
       <View style={styles.mapaContainer}>
         <MapView 
           style={styles.mapa}
           initialRegion={{
-            latitude: -3.7492, // Exemplo: UECE Fortaleza
+            latitude: -3.7492,
             longitude: -38.5747,
             latitudeDelta: 0.005,
             longitudeDelta: 0.005,
@@ -48,6 +79,14 @@ const EntregadorHome = () => {
             description="Aqui é a UECE"
           />
         </MapView>
+        {/* Botão Nova Entrega aparece se houver pedido pronto */}
+        {pedidoPronto && (
+          <NovaEntregaButton entregaInfo={{
+            restaurante: pedidoPronto.restaurante || 'Nome do Restaurante',
+            destino: pedidoPronto.destino || 'Para Bloco X, canto tal tal',
+            cliente: pedidoPronto.cliente || 'Fulano Alheio'
+          }} />
+        )}
       </View>
     </SafeAreaView>
   );
