@@ -142,6 +142,30 @@ class EntregadorService {
     }
   }
 
+  static async visualizarPedidosEntregues(entregadorId) {
+    try {
+      console.log(`🔄 Buscando pedidos entregues do entregador ${entregadorId}...`);
+      const response = await apiClient.get(`/entregador/${entregadorId}/pedidos_entregues`);
+      console.log('✅ Pedidos entregues:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erro ao buscar pedidos entregues:', error.message);
+      return [];
+    }
+  }
+
+    static async visualizarPedidoEntregue(entregadorId, pedidoId) {
+    try {
+      console.log(`🔄 Buscando pedido entregue ${pedidoId} do entregador ${entregadorId}...`);
+      const response = await apiClient.get(`/entregador/${entregadorId}/pedido_entregue/${pedidoId}`);
+      console.log('✅ Pedido entregue encontrado:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erro ao buscar pedido entregue:', error.message);
+      return null;
+    }
+  }
+
   // Método utilitário para configurar URL da API
   static setApiUrl(url) {
     apiClient.defaults.baseURL = url;

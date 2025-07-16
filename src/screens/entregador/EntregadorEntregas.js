@@ -1,100 +1,58 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator } from 'react-native';
+import DeliveredOrder from '../../components/DeliveredOrder';
+import { useAuth } from '../../context/AuthContext';
+import EntregadorService from '../../services/EntregadorService';
 
 const EntregadorEntregas = () => {
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [historicoPedidos, setHistoricoPedidos] = useState([]);
+  const { user } = useAuth();
+  const entregadorId = user?.entregador_id || user?.id; // ajuste conforme estrutura do user
+
+  const [pedidosEntreguesIds, setPedidosEntreguesIds] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    carregarPedidos();
-  }, []);
-
-  const carregarPedidos = async () => {
-    setLoading(true);
-    // Aqui você vai buscar o histórico de entregas do entregador
-    // Exemplo mock:
-    setTimeout(() => {
-      setHistoricoPedidos([
-        // Adicione objetos de histórico aqui
-      ]);
+    const fetchPedidosEntregues = async () => {
+      setLoading(true);
+      try {
+        // Busca todos os pedidos entregues do entregador
+        const pedidos = await EntregadorService.visualizarPedidosEntregues(entregadorId);
+        // Extrai os IDs dos pedidos entregues
+        const ids = (pedidos || []).map(p => p.pedido_id);
+        setPedidosEntreguesIds(ids);
+      } catch (error) {
+        setPedidosEntreguesIds([]);
+      }
       setLoading(false);
-      setRefreshing(false);
-    }, 1000);
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await carregarPedidos();
-  };
-
-  const renderPedidoHistorico = ({ item }) => (
-    // Substitua por seu componente de histórico
-    <View style={styles.pedidoBox}>
-      <Text>Histórico #{item.id}</Text>
-    </View>
-  );
-
-  const LoadingComponent = () => (
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="#8B0BD5" />
-      <Text style={styles.loadingText}>Carregando entregas...</Text>
-    </View>
-  );
-
-  const EmptyStateComponent = ({ title, subtitle }) => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptySubtitle}>{subtitle}</Text>
-    </View>
-  );
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>ENTREGAS</Text>
-        </View>
-        <LoadingComponent />
-      </SafeAreaView>
-    );
-  }
+    };
+    if (entregadorId) {
+      fetchPedidosEntregues();
+    }
+  }, [entregadorId]);
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>ENTREGAS</Text>
       </View>
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={['#8B0BD5']}
-            tintColor="#8B0BD5"
-          />
-        }
-      >
-        <Text style={styles.sectionTitle}>Histórico de entregas</Text>
-        <View style={styles.separatorHistorico} />
-        {historicoPedidos.length > 0 ? (
-          <FlatList
-            data={historicoPedidos}
-            renderItem={renderPedidoHistorico}
-            keyExtractor={(item) => item.id?.toString()}
-            scrollEnabled={false}
-            showsVerticalScrollIndicator={false}
-          />
+      <Text style={styles.sectionTitle}>Pedidos entregues</Text>
+      <View style={styles.separatorHistorico} />
+      {entregadorId ? (
+        loading ? (
+          <ActivityIndicator size="large" color="#8B0BD5" style={{ marginTop: 32 }} />
+        ) : pedidosEntreguesIds.length > 0 ? (
+          <DeliveredOrder entregadorId={entregadorId} pedidosEntreguesIds={pedidosEntreguesIds} />
         ) : (
-          <EmptyStateComponent
-            title="Nenhuma entrega encontrada no histórico"
-            subtitle="Suas entregas anteriores aparecerão aqui"
-          />
-        )}
-        <View style={styles.bottomSpacing} />
-      </ScrollView>
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyTitle}>Nenhum pedido entregue encontrado.</Text>
+          </View>
+        )
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>Você precisa estar logado como entregador para ver suas entregas.</Text>
+        </View>
+      )}
+      <View style={styles.bottomSpacing} />
     </SafeAreaView>
   );
 };
@@ -120,9 +78,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito-Regular',
     color: '#888888',
     textAlign: 'center',
-  },
-  content: {
-    flex: 1,
   },
   sectionTitle: {
     fontSize: 14,
@@ -151,34 +106,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 2,
   },
-  emptySubtitle: {
-    fontSize: 14,
-    fontFamily: 'Nunito-Medium',
-    color: '#888888',
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 50,
-    gap: 10,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#888888',
-    fontFamily: 'Nunito-Regular',
-  },
   bottomSpacing: {
     height: 50,
-  },
-  pedidoBox: {
-    backgroundColor: '#F7F7F7',
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 8,
-    marginHorizontal: 20,
-    elevation: 1,
   },
 });
 
