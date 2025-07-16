@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import mapaImage from '../../assets/images/uecemap.png';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 
 const EntregadorHome = () => {
-  const navigation = useNavigation();
   const [disponivel, setDisponivel] = useState(false);
 
   const handleToggleDisponivel = () => {
@@ -35,11 +33,21 @@ const EntregadorHome = () => {
         </TouchableOpacity>
       </View>
       <View style={styles.mapaContainer}>
-        <Image
-          source={mapaImage}
-          style={styles.mapaImage}
-          resizeMode="contain"
-        />
+        <MapView 
+          style={styles.mapa}
+          initialRegion={{
+            latitude: -3.7492, // Exemplo: UECE Fortaleza
+            longitude: -38.5747,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          }}
+        >
+          <Marker
+            coordinate={{ latitude: -3.7492, longitude: -38.5747 }}
+            title="UECE"
+            description="Aqui é a UECE"
+          />
+        </MapView>
       </View>
     </SafeAreaView>
   );
@@ -52,6 +60,7 @@ const styles = StyleSheet.create({
   },
   disponivelQuadro: {
     marginTop: 0,
+    marginBottom: 16,
     backgroundColor: '#FFF',
     borderBottomLeftRadius: 18,
     borderBottomRightRadius: 18,
@@ -65,6 +74,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.07,
     shadowRadius: 8,
     elevation: 3,
+    zIndex: 2,
   },
   disponivelBtn: {
     flexDirection: 'row',
@@ -87,11 +97,11 @@ const styles = StyleSheet.create({
   },
   mapaContainer: {
     flex: 1,
-    marginHorizontal: 0,
-    marginBottom: 0,
-    backgroundSize: 'contain',
+    width: '100%',
+    overflow: 'hidden',
   },
-  mapaImage: {
+  mapa: {
+    flex: 1,
     width: '100%',
     height: '100%',
   },
