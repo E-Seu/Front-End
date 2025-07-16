@@ -130,6 +130,18 @@ class EntregadorService {
     }
   }
 
+    static async entregarPedido(entregadorId, pedidoId) {
+    try {
+      console.log(`🔄 Entregador ${entregadorId} finalizando entrega do pedido ${pedidoId}...`);
+      const response = await apiClient.put(`/entregador/${entregadorId}/entregar_pedido/${pedidoId}`);
+      console.log('✅ Entrega finalizada:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erro ao finalizar entrega:', error.message);
+      return null;
+    }
+  }
+
   // Método utilitário para configurar URL da API
   static setApiUrl(url) {
     apiClient.defaults.baseURL = url;

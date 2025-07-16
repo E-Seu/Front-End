@@ -3,16 +3,20 @@ import { View, Text, TouchableOpacity, Modal, StyleSheet, Animated, Pressable } 
 import EntregadorService from '../services/EntregadorService';
 import ClienteService from '../services/ClienteService';
 import RestaurantService from '../services/RestaurantService';
+import EntregaInfoModal from './EntregaInfoModal';
 
 const NovaEntregaButton = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [blinkAnim] = useState(new Animated.Value(1));
   const [pedido, setPedido] = useState(null);
-  const [infoModalVisible, setInfoModalVisible] = useState(false);
 
   // Novos estados para nomes
   const [restauranteNome, setRestauranteNome] = useState('');
   const [clienteNome, setClienteNome] = useState('');
+
+  // Estado para controlar se mostra o modal detalhado
+  const [showDetalhe, setShowDetalhe] = useState(false);
+  const [pedidoAceito, setPedidoAceito] = useState(false);
 
   useEffect(() => {
     const blink = Animated.loop(
@@ -36,6 +40,8 @@ const NovaEntregaButton = () => {
   // Busca o pedido disponível mais recente ao abrir o modal
   const handleOpenModal = async () => {
     setModalVisible(true);
+    setPedidoAceito(false);
+    setShowDetalhe(false);
     try {
       const pedidos = await EntregadorService.buscarPedidosDisponiveis();
       if (pedidos && pedidos.length > 0) {
@@ -49,7 +55,7 @@ const NovaEntregaButton = () => {
   };
 
   // Busca nome do restaurante e cliente quando pedido muda
-useEffect(() => {
+  useEffect(() => {
     const fetchNomes = async () => {
       if (pedido) {
         // Buscar nome do restaurante
@@ -59,7 +65,8 @@ useEffect(() => {
         } else {
           setRestauranteNome('');
         }
-let usuarioId = pedido.usuario_id;
+        // Buscar nome do cliente pelo usuario_id ou cliente_id
+        let usuarioId = pedido.usuario_id;
         let nomeCliente = '';
         if (!usuarioId && pedido.cliente_id) {
           const cliente = await ClienteService.getCliente(pedido.cliente_id);
@@ -80,23 +87,52 @@ let usuarioId = pedido.usuario_id;
     fetchNomes();
   }, [pedido]);
 
-  // Aceitar pedido e mostrar modal suspenso de info
+  // Aceitar pedido e permitir abrir detalhes
   const handleAceitarPedido = async () => {
     const entregadorId = 1; // ajuste conforme sua lógica de autenticação
-    if (pedido && entregadorId) {
+    if (pedido && entregadorId && !pedidoAceito) {
       await EntregadorService.aceitarPedido(entregadorId, pedido.pedido_id);
+      setPedidoAceito(true);
+      setShowDetalhe(true);
       setModalVisible(false);
-      setInfoModalVisible(true);
     }
   };
 
-  // Rejeitar pedido
-  const handleRejeitarPedido = async () => {
+ const handleRejeitarPedido = async () => {
+    if (pedidoAceito) return; // Não pode rejeitar se já aceitou
     const entregadorId = 1; // ajuste conforme sua lógica de autenticação
     if (pedido && entregadorId) {
       await EntregadorService.rejeitarPedido(entregadorId, pedido.pedido_id);
-      setModalVisible(false);
+
+      // Buscar próximo pedido disponível
+      try {
+        const pedidos = await EntregadorService.buscarPedidosDisponiveis();
+        if (pedidos && pedidos.length > 0) {
+          const proximoPedido = pedidos.filter(p => p.pedido_id !== pedido.pedido_id).pop();
+          if (proximoPedido) {
+            setPedido(proximoPedido);
+            setPedidoAceito(false);
+            setShowDetalhe(false);
+          } else {
+            setPedido(null);
+            setModalVisible(false);
+          }
+        } else {
+          setPedido(null);
+          setModalVisible(false);
+        }
+      } catch {
+        setPedido(null);
+        setModalVisible(false);
+      }
     }
+  };
+  
+  const handleConcluirEntrega = () => {
+    setShowDetalhe(false);
+    setPedidoAceito(false);
+    setPedido(null);
+    // ...sua lógica de conclusão...
   };
 
   return (
@@ -111,7 +147,7 @@ let usuarioId = pedido.usuario_id;
         </TouchableOpacity>
       </Animated.View>
       <Modal
-        visible={modalVisible}
+        visible={modalVisible && !pedidoAceito}
         animationType="fade"
         transparent
         onRequestClose={() => setModalVisible(false)}
@@ -123,52 +159,60 @@ let usuarioId = pedido.usuario_id;
           <Pressable style={styles.modalBox} onPress={(e) => e.stopPropagation()}>
             {pedido ? (
               <>
-                <Text style={styles.modalInfoTitle}>Mais Informações:</Text>
-                <View style={styles.statusRow}>
-                  <View style={styles.statusDotActive} />
-                  <View style={styles.statusLine} />
-                  <View style={styles.statusDotActive} />
-                  <View style={styles.statusLine} />
-                  <View style={styles.statusDotInactive} />
-                </View>
-                <Text style={styles.modalSubtitle}>Pronto pra retirada</Text>
-                <Text style={styles.modalInfoRest}>
-                  {restauranteNome || pedido.restaurante_nome || 'Nome do Restaurante'}
-                </Text>
-                <Text style={styles.modalInfo}>
-                  {pedido.localizacao || 'Localização não informada'}
-                </Text>
-                <Text style={styles.modalInfo}>
-                  Entregar para <Text style={styles.modalDest}>
-                    {clienteNome || pedido.cliente_nome || `Cliente #${pedido.cliente_id}`}
+                <TouchableOpacity
+                  disabled={!pedidoAceito}
+                  onPress={() => pedidoAceito && setShowDetalhe(true)}
+                  style={{ opacity: pedidoAceito ? 1 : 0.5 }}
+                >
+                  <Text style={styles.modalInfoTitle}>Mais Informações:</Text>
+                  <View style={styles.statusRowCentered}>
+                    <View style={styles.statusDotActive} />
+                    <View style={styles.statusLine} />
+                    <View style={styles.statusDotActive} />
+                    <View style={styles.statusLine} />
+                    <View style={styles.statusDotInactive} />
+                  </View>
+                  <Text style={styles.modalSubtitle}>Pronto pra retirada</Text>
+                  <Text style={styles.modalInfoRest}>
+                    {restauranteNome || pedido.restaurante_nome || 'Nome do Restaurante'}
                   </Text>
-                </Text>
-                <View style={styles.divisor} />
-                <Text style={styles.modalInfoBold}>Itens do pedido:</Text>
-                {pedido.pedido_produtos && pedido.pedido_produtos.length > 0 ? (
-                  pedido.pedido_produtos.map((item, idx) => (
-                    <Text style={styles.modalInfoItem} key={idx}>
-                      {item.quantidade}x {item.produto?.nome} - R$ {parseFloat(item.preco_item).toFixed(2)}
+                  <Text style={styles.modalInfo}>
+                    {pedido.localizacao || 'Localização não informada'}
+                  </Text>
+                  <Text style={styles.modalInfo}>
+                    Entregar para <Text style={styles.modalDest}>
+                      {clienteNome || pedido.cliente_nome || `Cliente #${pedido.cliente_id}`}
                     </Text>
-                  ))
-                ) : (
-                  <Text style={styles.modalInfoItem}>Nenhum produto listado</Text>
-                )}
-                <View style={styles.divisor} />
-                <View style={styles.ganhoRow}>
-                  <Text style={styles.modalInfoBold}>Ganho da entrega</Text>
-                  <Text style={styles.modalInfoBold}>R$ {parseFloat(pedido.preco_total).toFixed(2)}</Text>
-                </View>
+                  </Text>
+                  <View style={styles.divisor} />
+                  <Text style={styles.modalInfoBold}>Itens do pedido:</Text>
+                  {pedido.pedido_produtos && pedido.pedido_produtos.length > 0 ? (
+                    pedido.pedido_produtos.map((item, idx) => (
+                      <Text style={styles.modalInfoItem} key={idx}>
+                        {item.quantidade}x {item.produto?.nome} - R$ {parseFloat(item.preco_item).toFixed(2)}
+                      </Text>
+                    ))
+                  ) : (
+                    <Text style={styles.modalInfoItem}>Nenhum produto listado</Text>
+                  )}
+                  <View style={styles.divisor} />
+                  <View style={styles.ganhoRow}>
+                    <Text style={styles.modalInfoBold}>Ganho da entrega</Text>
+                    <Text style={styles.modalInfoBold}>R$ {parseFloat(pedido.preco_total).toFixed(2)}</Text>
+                  </View>
+                </TouchableOpacity>
                 <View style={styles.botoesRow}>
                   <TouchableOpacity
                     style={styles.rejeitarBtn}
                     onPress={handleRejeitarPedido}
+                    disabled={pedidoAceito}
                   >
                     <Text style={styles.rejeitarText}>Rejeitar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.aceitarBtn}
                     onPress={handleAceitarPedido}
+                    disabled={pedidoAceito}
                   >
                     <Text style={styles.aceitarText}>Aceitar</Text>
                   </TouchableOpacity>
@@ -191,41 +235,18 @@ let usuarioId = pedido.usuario_id;
 
       {/* Modal suspenso de informações do entregador após aceitar */}
       <Modal
-        visible={infoModalVisible}
+        visible={showDetalhe && pedidoAceito}
         animationType="fade"
         transparent
-        onRequestClose={() => setInfoModalVisible(false)}
+        onRequestClose={() => {}}
       >
         <View style={styles.infoModalOverlay}>
-          <View style={styles.infoModalBox}>
-            <Text style={styles.infoModalTitle}>Em processo de entrega</Text>
-            <View style={styles.statusRow}>
-              <View style={styles.statusDotActive} />
-              <View style={styles.statusLine} />
-              <View style={styles.statusDotActive} />
-              <View style={styles.statusLine} />
-              <View style={styles.statusDotInactive} />
-            </View>
-            <Text style={styles.modalSubtitle}>Pronto pra retirada</Text>
-            <Text style={styles.modalInfoRest}>
-              {restauranteNome || pedido?.restaurante_nome || 'Nome do Restaurante'}
-            </Text>
-            <Text style={styles.modalInfo}>
-              {pedido?.localizacao || 'Localização não informada'}
-            </Text>
-            <Text style={styles.modalInfo}>
-              Entregar para <Text style={styles.modalDest}>
-                {clienteNome || pedido?.cliente_nome || `Cliente #${pedido?.cliente_id}`}
-              </Text>
-            </Text>
-            <View style={styles.divisor} />
-            <TouchableOpacity
-              style={styles.fecharBtn}
-              onPress={() => setInfoModalVisible(false)}
-            >
-              <Text style={styles.fecharText}>Fechar</Text>
-            </TouchableOpacity>
-          </View>
+          <EntregaInfoModal
+            pedido={pedido}
+            restauranteNome={restauranteNome}
+            clienteNome={clienteNome}
+            onConcluirEntrega={handleConcluirEntrega}
+          />
         </View>
       </Modal>
     </>
@@ -282,6 +303,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginVertical: 8,
+    // Remova se não quiser usar mais
+  },
+  statusRowCentered: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center', // Centraliza horizontalmente
+    width: '100%',
+    marginVertical: 8,
   },
   statusDotActive: {
     width: 16,
@@ -293,7 +322,6 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#E0E0E0',
   },
   statusLine: {
     width: 32,
