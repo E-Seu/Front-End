@@ -106,24 +106,56 @@ const handleFinalizarPedido = async () => {
     const itensCarrinho = getCartItemsWithDetails();
     const clienteId = currentUser.user.id || currentUser.user.usuario_id;
 
+    // ✅ NOVA VALIDAÇÃO: Verificar se o cliente já tem pedido ativo
+    const { temPedidoAtivo, pedidoAtivo } = await PedidoService.clienteTemPedidoAtivo(clienteId);
+    
+    if (temPedidoAtivo) {
+      const statusLabel = PedidoService.getStatusLabel(pedidoAtivo.status);
+      Alert.alert(
+        'Pedido Ativo Encontrado',
+        `Você já possui um pedido ativo (${statusLabel}). Aguarde a entrega para fazer um novo pedido.`,
+        [
+          { text: 'Ver Pedido', onPress: () => {
+            onClose();
+            // Navegar para a tela de pedidos
+            if (typeof navigateToScreen === 'function') {
+              navigateToScreen('ClientePedidos');
+            }
+          }},
+          { text: 'OK', style: 'cancel' }
+        ]
+      );
+      return;
+    }
+
+    // Montar array de produtos para o backend
+    const produtosPedido = Object.entries(cartItems).map(([productId, quantidade]) => {
+      const produto = produtos.find(p => (p.id || p.produto_id).toString() === productId);
+      if (produto) {
+        const preco_item = produto.valor !== undefined ? parseFloat(produto.valor) : (produto.preco !== undefined ? parseFloat(produto.preco) : 0);
+        return {
+          produto_id: produto.id || produto.produto_id,
+          quantidade,
+          preco_item
+        };
+      }
+      return null;
+    }).filter(item => item !== null);
+
     // ✅ DADOS VALIDADOS para o pedido
     const pedidoData = {
       cliente_id: clienteId,
       restaurante_id: parseInt(restaurantId),
       entregador_id: null,
       status: "aguardando",
-      preco_total: total, // Será convertido para string com 2 decimais no PedidoService
+      preco_total: total,
       localizacao: localEntrega.trim(),
       data_hora: new Date().toISOString(),
-      observacao: criarObservacaoComItens()
+      observacao: criarObservacaoComItens(),
+      produtos: produtosPedido
     };
 
     console.log('📦 Dados finais do pedido:', pedidoData);
-    console.log('👤 Cliente ID:', clienteId);
-    console.log('🏪 Restaurante ID:', restaurantId);
-    console.log('💰 Total validado:', total);
-    console.log('📍 Local:', localEntrega);
-    console.log('🛒 Itens:', itensCarrinho);
 
     // Criar pedido via API
     const novoPedido = await PedidoService.criarPedido(pedidoData);
@@ -150,7 +182,21 @@ const handleFinalizarPedido = async () => {
     }
   } catch (error) {
     console.error('❌ Erro ao finalizar pedido:', error);
-    Alert.alert('Erro', `Ocorreu um erro ao finalizar o pedido: ${error.message}`);
+    
+    // ✅ Tratamento específico para pedido ativo existente
+    if (error.message.includes('pedido ativo')) {
+      Alert.alert('Pedido Ativo', error.message, [
+        { text: 'Ver Pedido', onPress: () => {
+          onClose();
+          if (typeof navigateToScreen === 'function') {
+            navigateToScreen('ClientePedidos');
+          }
+        }},
+        { text: 'OK', style: 'cancel' }
+      ]);
+    } else {
+      Alert.alert('Erro', `Ocorreu um erro ao finalizar o pedido: ${error.message}`);
+    }
   } finally {
     setLoading(false);
   }
@@ -200,7 +246,6 @@ const handleFinalizarPedido = async () => {
     setShowCompletedModal(false);
     
     // Navegar para a tela de pedidos
-    // Usar navigateToScreen do AppLayout se disponível
     if (typeof navigateToScreen === 'function') {
       console.log('🔄 Usando navigateToScreen do AppLayout...');
       navigateToScreen('ClientePedidos', { 
@@ -209,7 +254,6 @@ const handleFinalizarPedido = async () => {
         timestamp: Date.now()
       });
     }
-    // Fallback para React Navigation se disponível
     else if (navigation && navigation.navigate) {
       console.log('🔄 Usando React Navigation...');
       navigation.navigate('ClientePedidos', { 

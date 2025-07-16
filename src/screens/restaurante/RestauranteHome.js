@@ -1,9 +1,11 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ImageBackground, FlatList, ActivityIndicator } from 'react-native';
-import RetornarIcon from '../../assets/icons/retornarIcon';
-import OpcoesIcon from '../../assets/icons/opcoesIcon';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ImageBackground, FlatList, ActivityIndicator, Alert } from 'react-native';
+import ConfigurationIcon from '../../assets/icons/configurationIcon';
 import EstrelaIcon from '../../assets/icons/estrelaIcon';
-import ProductItem from '../../components/ProductItem';
+import MaisIcon from '../../assets/icons/maisIcon';
+import RestaurantProductItem from '../../components/RestaurantProductItem';
+import AddProductModal from '../../components/AddProductModal';
+import UpdateProductModal from '../../components/UpdateProductModal';
 import { useAuth } from '../../context/AuthContext';
 import RestaurantService from '../../services/RestaurantService';
 
@@ -22,6 +24,11 @@ const RestauranteHome = ({ navigation, route }) => {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [showUpdateProductModal, setShowUpdateProductModal] = useState(false);
+  const [productToEdit, setProductToEdit] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Carregar dados do restaurante do usuário logado
   useEffect(() => {
@@ -44,7 +51,7 @@ const RestauranteHome = ({ navigation, route }) => {
           
           // Buscar produtos específicos do restaurante através da API
           const productsList = await RestaurantService.getProductsByRestaurant(restaurantData.id || restaurantData.restaurante_id);
-          setProdutos(productsList || restaurantData.produtos || []);
+          setProdutos(productsList || []);
         } else {
           console.log('Nenhum restaurante encontrado para o usuário');
           setRestaurant(null);
@@ -57,7 +64,14 @@ const RestauranteHome = ({ navigation, route }) => {
       setProdutos([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  // Função para refresh (pull to refresh)
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadRestaurantData();
   };
 
   // Função para gerar um hash simples baseado no nome (mesma do RestaurantItem)
@@ -82,22 +96,22 @@ const RestauranteHome = ({ navigation, route }) => {
     return restaurantImages[imageIndex];
   }, [restaurant?.nome]);
 
-const restaurantDetails = {
-  nome: restaurant?.nome || "Nome do Restaurante",
-  info: restaurant?.info || "Informações do restaurante",
-  local: restaurant?.local || restaurant?.localizacao || "Local do restaurante", // Suporte para ambos
-  horarioAbertura: restaurant?.horario_abertura || "08:00",
-  horarioFechamento: restaurant?.horario_fechamento || "22:00",
-  numeroEstrelas: restaurant?.numero_estrelas || restaurant?.avaliacao || 4.5, // Suporte para ambos
-  isAberto: restaurant?.disponivel !== undefined ? restaurant.disponivel : true,
-  telefone: restaurant?.telefone || "",
-  tipo_restaurante: restaurant?.tipo_restaurante || "",
-  saldo: restaurant?.saldo || 0
-};
+  const restaurantDetails = {
+    nome: restaurant?.nome || "Nome do Restaurante",
+    info: restaurant?.info || "Informações do restaurante",
+    local: restaurant?.local || restaurant?.localizacao || "Local do restaurante",
+    horarioAbertura: restaurant?.horario_abertura || "08:00",
+    horarioFechamento: restaurant?.horario_fechamento || "22:00",
+    numeroEstrelas: restaurant?.numero_estrelas || 0,
+    isAberto: restaurant?.disponivel !== undefined ? restaurant.disponivel : true,
+    telefone: restaurant?.telefone || "",
+    tipo_restaurante: restaurant?.tipo_restaurante || "",
+    saldo: restaurant?.saldo || 0
+  };
 
   const handleStatusToggle = async () => {
     if (restaurant && !statusLoading) {
-      const newStatus = !restaurant.disponivel; // Mudança: usando disponivel
+      const newStatus = !restaurant.disponivel;
       
       try {
         setStatusLoading(true);
@@ -107,7 +121,7 @@ const restaurantDetails = {
         const updatedRestaurant = await RestaurantService.updateRestaurantStatus(restaurantId, newStatus);
         
         if (updatedRestaurant) {
-          setRestaurant(prev => ({ ...prev, disponivel: newStatus })); // Mudança: usando disponivel
+          setRestaurant(prev => ({ ...prev, disponivel: newStatus }));
           console.log(`Status atualizado com sucesso para: ${newStatus ? 'Disponível' : 'Indisponível'}`);
         } else {
           console.error('Falha ao atualizar status do restaurante');
@@ -120,32 +134,95 @@ const restaurantDetails = {
     }
   };
 
-  const handleBackPress = () => {
-    if (navigation && navigation.goBack) {
-      navigation.goBack();
+  const handleConfigurationPress = () => {
+    console.log('Configurações do restaurante pressionado');
+    setShowConfigModal(true);
+    // TODO: Implementar modal de configurações
+  };
+
+  const handleAddProductPress = () => {
+    console.log('Adicionar produto pressionado');
+    setShowAddProductModal(true);
+  };
+
+  const handleProductAdded = (novoProduto) => {
+    console.log('Produto adicionado:', novoProduto);
+    // Adicionar o novo produto à lista
+    setProdutos(prevProdutos => [...prevProdutos, novoProduto]);
+  };
+
+  const handleProductAvailabilityToggle = async (productId, currentAvailability) => {
+    const newAvailability = !currentAvailability;
+    console.log(`Alterando disponibilidade do produto ${productId} para:`, newAvailability);
+    
+    try {
+      const restaurantId = restaurant.id || restaurant.restaurante_id;
+      const updatedProduct = await RestaurantService.updateProductAvailability(
+        restaurantId, 
+        productId, 
+        newAvailability
+      );
+      
+      if (updatedProduct) {
+        // Atualizar o produto na lista local
+        setProdutos(prevProdutos => 
+          prevProdutos.map(produto => 
+            produto.id === productId || produto.produto_id === productId
+              ? { ...produto, disponivel: newAvailability }
+              : produto
+          )
+        );
+        console.log(`Disponibilidade do produto ${productId} atualizada com sucesso`);
+      } else {
+        console.error('Falha ao atualizar disponibilidade do produto');
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar disponibilidade do produto:', error);
     }
   };
 
-  const handleOpcoesPress = () => {
-    console.log('Opções do restaurante pressionado');
-    // Aqui você pode navegar para uma tela de configurações do restaurante
+  const handleEditProduct = (productData) => {
+    console.log('Editar produto:', productData);
+    setProductToEdit(productData);
+    setShowUpdateProductModal(true);
   };
 
-  const handleQuantityChange = (productId, quantidade) => {
-    console.log(`Produto ${productId}: quantidade ${quantidade}`);
-    // Aqui você pode implementar a lógica para gerenciar o estoque
-    // Exemplo: atualizar disponibilidade do produto
-    // RestaurantService.updateProductAvailability(restaurant.id, productId, quantidade > 0);
+  const handleProductUpdated = (produtoAtualizado) => {
+    console.log('Produto atualizado:', produtoAtualizado);
+    // Atualizar o produto na lista
+    setProdutos(prevProdutos => 
+      prevProdutos.map(produto => 
+        produto.produto_id === produtoAtualizado.produto_id || produto.id === produtoAtualizado.produto_id
+          ? produtoAtualizado
+          : produto
+      )
+    );
   };
 
-  const getStatusText = () => {
-    if (statusLoading) return "Atualizando...";
-    return restaurantDetails.isAberto ? "Disponível" : "Indisponível"; // Mudança: texto mais claro
-  };
-
-  const getStatusColor = () => {
-    if (statusLoading) return "#FFB800";
-    return restaurantDetails.isAberto ? "#8B0BD5" : "#888888";
+  const handleDeleteProduct = async (productId) => {
+    console.log('Deletar produto:', productId);
+    
+    try {
+      const restaurantId = restaurant.id || restaurant.restaurante_id;
+      const success = await RestaurantService.deleteProduct(restaurantId, productId);
+      
+      if (success) {
+        // Remover o produto da lista local
+        setProdutos(prevProdutos => 
+          prevProdutos.filter(produto => 
+            produto.id !== productId && produto.produto_id !== productId
+          )
+        );
+        console.log(`Produto ${productId} removido com sucesso`);
+        Alert.alert('Sucesso', 'Produto removido com sucesso!');
+      } else {
+        console.error('Falha ao remover produto');
+        Alert.alert('Erro', 'Falha ao remover produto. Tente novamente.');
+      }
+    } catch (error) {
+      console.error('Erro ao remover produto:', error);
+      Alert.alert('Erro', 'Erro ao remover produto. Tente novamente.');
+    }
   };
 
   // Função para obter estilos dinâmicos baseados no status
@@ -177,17 +254,30 @@ const restaurantDetails = {
     return restaurantDetails.isAberto ? '#FF7F23' : '#888888';
   };
 
-  // Renderizar cada item de produto com campos corretos da API
-  const renderProductItem = ({ item }) => (
-    <ProductItem
-      nome={item.nome}
-      descricao={item.descricao}
-      valor={item.valor || item.preco} // Suporte para ambos os nomes
-      restricoes={item.restricoes || []}
-      disponivel={item.disponivel}
-      onQuantityChange={(quantidade) => handleQuantityChange(item.id || item.produto_id, quantidade)}
-    />
-  );
+    // Renderizar cada item de produto usando RestaurantProductItem
+  const renderProductItem = ({ item }) => {
+    // ✅ CORREÇÃO: Verificação de segurança para evitar renderizar itens null/undefined
+    if (!item) {
+      return null;
+    }
+
+    return (
+      <RestaurantProductItem
+        produto_id={item.produto_id || item.id}
+        restaurante_id={item.restaurante_id || restaurant?.id || restaurant?.restaurante_id}
+        nome={item.nome}
+        descricao={item.descricao}
+        valor={item.valor || item.preco}
+        preco={item.preco}
+        tempo_preparo={item.tempo_preparo}
+        disponivel={item.disponivel}
+        selos={item.selos}
+        onAvailabilityToggle={handleProductAvailabilityToggle}
+        onEditPress={handleEditProduct}
+        onDeletePress={handleDeleteProduct}
+      />
+    );
+  };
 
   // Header da lista de produtos
   const ListHeader = () => (
@@ -199,20 +289,15 @@ const restaurantDetails = {
           style={styles.backgroundImage}
           imageStyle={styles.imageStyle}
         >
-          {/* Header com botões */}
+          {/* Header com apenas o botão de configuração */}
           <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.headerButton} 
-              onPress={handleBackPress}
-            >
-              <RetornarIcon width={24} height={24} />
-            </TouchableOpacity>
+            <View style={styles.headerSpacer} />
             
             <TouchableOpacity 
               style={styles.headerButton} 
-              onPress={handleOpcoesPress}
+              onPress={handleConfigurationPress}
             >
-              <OpcoesIcon width={24} height={24} />
+              <ConfigurationIcon width={24} height={24} />
             </TouchableOpacity>
           </View>
 
@@ -229,24 +314,69 @@ const restaurantDetails = {
             <View style={styles.avaliacaoContainer}>
               <EstrelaIcon width={16} height={16} isActive={restaurantDetails.isAberto} />
               <Text style={[styles.avaliacaoText, { color: getAvaliacaoTextColor() }]}>
-                {restaurantDetails.numeroEstrelas} Estrelas
+                {restaurantDetails.numeroEstrelas.toFixed(1)} Estrelas
               </Text>
             </View>
             
-            {/* Botão para alternar status - funcionalidade específica do restaurante */}
-            <TouchableOpacity 
-              onPress={handleStatusToggle}
-              disabled={statusLoading}
-              style={[styles.statusButton, statusLoading && styles.statusButtonDisabled]}
-            >
-              <Text style={[styles.statusText, { color: getStatusColor() }]}>
-                {getStatusText()} {!statusLoading && "(Toque para alterar)"}
-              </Text>
-            </TouchableOpacity>
+            {/* Novo botão de status com design personalizado */}
+            <View style={styles.statusContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.statusButtonLeft,
+                  !restaurantDetails.isAberto && styles.statusButtonActiveLeft
+                ]}
+                onPress={handleStatusToggle}
+                disabled={statusLoading}
+              >
+                <Text style={[
+                  styles.statusButtonText,
+                  !restaurantDetails.isAberto && styles.statusButtonTextActive
+                ]}>
+                  Fechado
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.statusButtonRight,
+                  restaurantDetails.isAberto && styles.statusButtonActiveRight
+                ]}
+                onPress={handleStatusToggle}
+                disabled={statusLoading}
+              >
+                <Text style={[
+                  styles.statusButtonText,
+                  restaurantDetails.isAberto && styles.statusButtonTextActive
+                ]}>
+                  Aberto
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ImageBackground>
       </View>
-      <View style={styles.sectionTitle}></View>
+      
+      {/* Botão Adicionar Produto */}
+      <TouchableOpacity 
+        style={styles.addProductButton}
+        onPress={handleAddProductPress}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.addProductText}>Adicionar Produto</Text>
+        <MaisIcon width={22} height={22} isPressed={true} />
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Componente para lista vazia
+  const EmptyComponent = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyText}>
+        Nenhum produto cadastrado ainda.
+      </Text>
+      <Text style={styles.emptySubText}>
+        Clique em "Adicionar Produto" para começar a criar seu cardápio.
+      </Text>
     </View>
   );
 
@@ -281,13 +411,40 @@ const restaurantDetails = {
       <FlatList
         data={produtos}
         renderItem={renderProductItem}
-        keyExtractor={(item) => (item.id || item.produto_id).toString()}
+        keyExtractor={(item, index) => {
+          // ✅ CORREÇÃO: Verificação de segurança para evitar erros com itens null/undefined
+          if (!item) {
+            return `empty-item-${index}`;
+          }
+          return (item.id || item.produto_id || `item-${index}`).toString();
+        }}
         ListHeaderComponent={ListHeader}
+        ListEmptyComponent={EmptyComponent}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        refreshing={loading}
-        onRefresh={loadRestaurantData}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+      />
+      
+      {/* Modal de Adicionar Produto */}
+      <AddProductModal
+        visible={showAddProductModal}
+        onClose={() => setShowAddProductModal(false)}
+        restaurantId={restaurant?.id || restaurant?.restaurante_id}
+        onProductAdded={handleProductAdded}
+      />
+
+      {/* Modal de Editar Produto */}
+      <UpdateProductModal
+        visible={showUpdateProductModal}
+        onClose={() => {
+          setShowUpdateProductModal(false);
+          setProductToEdit(null);
+        }}
+        restaurantId={restaurant?.id || restaurant?.restaurante_id}
+        productData={productToEdit}
+        onProductUpdated={handleProductUpdated}
       />
     </SafeAreaView>
   );
@@ -325,6 +482,10 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
 
+  headerSpacer: {
+    width: 40, // Mesmo tamanho do botão para centralizar
+  },
+
   headerButton: {
     width: 40,
     height: 40,
@@ -339,10 +500,10 @@ const styles = StyleSheet.create({
     marginTop: 30,
     borderRadius: 8,
     borderWidth: 0.5,
-    padding: 8,
+    padding: 12,
     alignItems: 'center',
     elevation: 5,
-    gap: 6,
+    gap: 8,
     shadowOffset: {
       width: 2,
       height: 2,
@@ -375,40 +536,98 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 
-  // Novos estilos para campos adicionais
-  tipoText: {
-    fontSize: 12,
-    fontFamily: 'Nunito-Medium',
-    textAlign: 'center',
+  // Novos estilos para o botão de status personalizado
+  statusContainer: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginTop: 4,
   },
 
-  telefoneText: {
-    fontSize: 12,
-    fontFamily: 'Nunito-Regular',
-    textAlign: 'center',
+  statusButtonLeft: {
+    width: 75,
+    height: 22,
+    backgroundColor: '#EFE9F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopLeftRadius: 10,
+    borderBottomLeftRadius: 10,
   },
 
-  statusButton: {
-    padding: 4,
+  statusButtonRight: {
+    width: 75,
+    height: 22,
+    backgroundColor: '#EFE9F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopRightRadius: 10,
+    borderBottomRightRadius: 10,
   },
 
-  statusButtonDisabled: {
-    opacity: 0.6,
+  statusButtonActiveLeft: {
+    backgroundColor: '#E1D7E6',
+    borderWidth: 1,
+    borderColor: '#8B0BD5',
+    borderRightWidth: 0,
   },
 
-  statusText: {
-    fontSize: 16,
-    fontFamily: 'Nunito-Medium',
-    textAlign: 'center',
+  statusButtonActiveRight: {
+    backgroundColor: '#E1D7E6',
+    borderWidth: 1,
+    borderColor: '#8B0BD5',
+    borderLeftWidth: 0,
   },
 
-  sectionTitle: {
-    marginTop: 70,
-    marginBottom: 5,
+  statusButtonText: {
+    fontSize: 14,
+    fontFamily: 'Nunito-Bold',
+    color: '#D9C0E7',
+  },
+
+  statusButtonTextActive: {
+    color: '#8B0BD5',
+  },
+
+  // Estilos para o botão adicionar produto
+  addProductButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    marginTop: 80,
+  },
+
+  addProductText: {
+    fontSize: 14,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#DD5F04',
+    marginLeft: 8,
   },
 
   separator: {
     height: 8,
+  },
+
+  // Estilo para lista vazia
+  emptyContainer: {
+    padding: 30,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+
+  emptyText: {
+    fontSize: 16,
+    fontFamily: 'Nunito-Bold',
+    color: '#4E0777',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+
+  emptySubText: {
+    fontSize: 14,
+    fontFamily: 'Nunito-Regular',
+    color: '#888888',
+    textAlign: 'center',
   },
 
   // Estilos para loading e erro

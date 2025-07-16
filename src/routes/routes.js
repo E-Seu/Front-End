@@ -16,6 +16,9 @@ import RegisterSucessScreen from '../screens/RegisterSucessScreen';
 import AppLayout from '../components/AppLayout';
 import ClienteFavoritos from '../screens/cliente/ClienteFavoritos';
 import ClienteRestauranteDetalhes from '../screens/cliente/ClienteRestauranteDetalhes';
+import ClienteConta from '../screens/cliente/ClienteConta';
+import RestauranteConta from '../screens/restaurante/RestauranteConta';
+import EntregadorConta from '../screens/entregador/EntregadorConta';
 
 const Stack = createNativeStackNavigator();
 
@@ -24,15 +27,7 @@ export default function Routes() {
 
   console.log('Routes - isAuthenticated:', isAuthenticated, 'userType:', userType, 'loading:', loading);
 
-  // // Se ainda está carregando, mostra a SplashScreen
-  // if (loading) {
-  //   return (
-  //     <Stack.Navigator screenOptions={{ headerShown: false }}>
-  //       <Stack.Screen name="Splash" component={SplashScreen} />
-  //     </Stack.Navigator>
-  //   );
-  // }
-
+  
   return (
     <Stack.Navigator 
       initialRouteName={"Splash"} 
@@ -66,6 +61,9 @@ export default function Routes() {
           </Stack.Screen>
           <Stack.Screen name="ClienteFavoritos" component={ClienteFavoritos} />
           <Stack.Screen name="RestauranteDetalhes" component={ClienteRestauranteDetalhes} />
+          <Stack.Screen name="ClienteConta" component={ClienteConta} />
+          <Stack.Screen name="RestauranteConta" component={RestauranteConta} />
+          <Stack.Screen name="EntregadorConta" component={EntregadorConta} />
         </>
       )}
     </Stack.Navigator>

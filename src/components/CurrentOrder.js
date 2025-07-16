@@ -1,19 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import RelogioIcon from '../assets/icons/relogioIcon';
-import PedidoVisualizado from './PedidoVisualizado';
+import ViewedOrderModal from './ViewedOrderModal';
 
 const CurrentOrder = ({ 
   horario = "hora",
   nomeRestaurante = "Restaurante Exemplo",
   primeiroItem = "item exemplo",
   status = "",
+  precoTotal = 0,
+  pedidoId,
   pedido = {},
   restaurante = {},
   entregador = {},
   onVisualizarPress
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const [modalKey, setModalKey] = useState(0); // Para forçar re-render do modal
+
+  // Atualizar key do modal quando os dados mudarem (para garantir atualização)
+  useEffect(() => {
+    if (modalVisible) {
+      setModalKey(prev => prev + 1);
+    }
+  }, [status, precoTotal, pedido, modalVisible]);
 
   const handleVisualizarPress = () => {
     setModalVisible(true);
@@ -22,7 +32,11 @@ const CurrentOrder = ({
     }
   };
 
-  // Função para exibir o status de forma amigável (opcional)
+  const handleCloseModal = () => {
+    setModalVisible(false);
+  };
+
+  // Função para exibir o status de forma amigável
   const getStatusLabel = (status) => {
     switch (status) {
       case 'aguardando': return 'Aguardando';
@@ -67,18 +81,21 @@ const CurrentOrder = ({
           </TouchableOpacity>
         </View>
       </View>
+
       {/* Modal de visualização do pedido */}
       <Modal
         visible={modalVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={handleCloseModal}
       >
-        <PedidoVisualizado
-          onClose={() => setModalVisible(false)}
+        <ViewedOrderModal
+          key={modalKey} // Força re-render quando dados mudam
+          onClose={handleCloseModal}
+          pedidoId={pedidoId || pedido.id || pedido.pedido_id}
           nomeRestaurante={nomeRestaurante}
           localizacao={pedido.localizacao || pedido.endereco || pedido.local || 'Não informado'}
-          precoTotal={pedido.preco_total || pedido.total || 0}
+          precoTotal={precoTotal || pedido.preco_total || pedido.total || 0}
           status={status}
           nomeEntregador={entregador.nome || entregador.nome_entregador || pedido.entregador_nome || ''}
           itens={pedido.itens || pedido.items || []}

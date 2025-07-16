@@ -155,27 +155,19 @@ class LoginService {
     }
   }
 
-  // Logout
+  // Logout - apenas limpa dados locais (não chama API)
   static async logout() {
     try {
-      console.log('🔄 Fazendo logout via API...');
+      console.log('🔄 Fazendo logout local...');
       
-      // Limpar dados locais
+      // Limpar dados locais do AsyncStorage
       await AsyncStorage.removeItem('userData');
       await AsyncStorage.removeItem('userToken');
-      
-      // Tentar fazer logout na API (se existir endpoint)
-      try {
-        await apiClient.post('/auth/logout');
-        console.log('✅ Logout realizado na API');
-      } catch (error) {
-        console.log('⚠️ Erro ao fazer logout na API (continuando):', error.message);
-      }
       
       console.log('✅ Logout local realizado com sucesso');
       return { success: true };
     } catch (error) {
-      console.error('❌ Erro ao fazer logout:', error);
+      console.error('❌ Erro ao fazer logout local:', error);
       return { success: false, error: error.message };
     }
   }
