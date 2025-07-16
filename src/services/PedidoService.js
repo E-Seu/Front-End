@@ -126,8 +126,7 @@ class PedidoService {
     const statusLabels = {
       'aguardando': 'Aguardando',
       'em_preparo': 'Em preparo', 
-      'pronto': 'Pronto',
-      'a_caminho': 'A caminho',
+      'pronto': 'A caminho',
       'entregue': 'Entregue',
       'cancelado': 'Cancelado'
     };
@@ -439,7 +438,7 @@ class PedidoService {
     const statusMap = {
       'aguardando': 'Aguardando',
       'em_preparo': 'Em preparo',
-      'pronto': 'Pronto',
+      'pronto': 'A caminho',
       'a_caminho': 'A caminho',
       'entregue': 'Entregue',
       'cancelado': 'Cancelado',
@@ -450,7 +449,7 @@ class PedidoService {
 
   // Verificar se o pedido está em andamento
   static isPedidoAtivo(status) {
-    const statusAtivos = ['aguardando', 'em_preparo', 'pronto', 'a_caminho'];
+    const statusAtivos = ['aguardando', 'em_preparo', 'a_caminho', 'pronto'];
     const isAtivo = statusAtivos.includes(status);
     console.log(`📦 Verificando se status '${status}' é ativo: ${isAtivo}`);
     return isAtivo;
@@ -466,8 +465,7 @@ class PedidoService {
       const temposPorStatus = {
         'aguardando': 5,
         'em_preparo': 30,
-        'pronto': 35,
-        'a_caminho': 45
+        'pronto': 45
       };
       
       const tempoTotal = temposPorStatus[status] || 0;
@@ -560,40 +558,6 @@ class PedidoService {
     } catch (error) {
       return { online: false, error: error.message };
     }
-  }
-
-  // ✅ NOVA FUNÇÃO: Método para debug - testar funções de pedido ativo
-  static debugPedidoAtivo() {
-    console.log('🔍 Testando funções de pedido ativo...');
-    
-    // Testar isPedidoAtivo
-    const statusTeste = ['aguardando', 'em_preparo', 'pronto', 'a_caminho', 'entregue', 'cancelado'];
-    
-    console.log('📦 Teste isPedidoAtivo:');
-    statusTeste.forEach(status => {
-      console.log(`  - ${status}: ${this.isPedidoAtivo(status)}`);
-    });
-    
-    // Testar getStatusLabel
-    console.log('📦 Teste getStatusLabel:');
-    statusTeste.forEach(status => {
-      console.log(`  - ${status}: ${this.getStatusLabel(status)}`);
-    });
-    
-    // Testar com pedidos mock
-    const pedidosMock = [
-      { pedido_id: 1, status: 'aguardando', data_hora: '2025-01-15T10:00:00Z' },
-      { pedido_id: 2, status: 'em_preparo', data_hora: '2025-01-15T11:00:00Z' },
-      { pedido_id: 3, status: 'entregue', data_hora: '2025-01-15T09:00:00Z' }
-    ];
-    
-    console.log('📦 Teste encontrarPedidoAtual:');
-    const pedidoAtual = this.encontrarPedidoAtual(pedidosMock);
-    console.log('  - Resultado:', pedidoAtual);
-    
-    console.log('📦 Teste filtrarPedidosPorTipo:');
-    console.log('  - Ativos:', this.filtrarPedidosPorTipo(pedidosMock, 'ativos'));
-    console.log('  - Histórico:', this.filtrarPedidosPorTipo(pedidosMock, 'historico'));
   }
 }
 
