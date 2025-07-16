@@ -97,12 +97,6 @@ const closeModal = () => {
       
       if (result.success) {
         console.log('✅ Login bem-sucedido:', result.user);
-        
-        Alert.alert(
-          'Sucesso!', 
-          `Bem-vindo(a), ${result.user.nome}!`,
-          [{ text: 'OK', onPress: closeModal }]
-        );
       } else {
         console.log('❌ Erro no login:', result.error);
         Alert.alert('Erro', result.error || 'Falha no login');

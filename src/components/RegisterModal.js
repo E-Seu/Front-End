@@ -126,11 +126,6 @@ const RegisterModal = ({ visible, onClose }) => {
     const result = await register(formData);
     
     if (result.success) {
-      Alert.alert(
-        'Sucesso!', 
-        `Conta criada com sucesso! Bem-vindo(a), ${result.user.name}!`,
-        [{ text: 'OK', onPress: closeModal }]
-      );
     } else {
       Alert.alert('Erro', result.error);
     }
