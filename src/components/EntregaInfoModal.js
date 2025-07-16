@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import EntregadorService from '../services/EntregadorService';
+import MapView, { Marker } from 'react-native-maps';
 
 const EntregaInfoModal = ({
   pedido,
@@ -9,6 +10,17 @@ const EntregaInfoModal = ({
   onConcluirEntrega,
 }) => {
   if (!pedido) return null;
+
+  // Extrai latitude/longitude da string "Lat: -3.72983, Lng: -38.52171"
+  let latitude = null;
+  let longitude = null;
+  if (pedido?.localizacao) {
+    const match = pedido.localizacao.match(/Lat:\s*(-?\d+\.\d+),\s*Lng:\s*(-?\d+\.\d+)/);
+    if (match) {
+      latitude = parseFloat(match[1]);
+      longitude = parseFloat(match[2]);
+    }
+  }
 
   const handleConcluirEntrega = async () => {
     const entregadorId = pedido.entregador_id || 1; // ajuste conforme sua lógica
@@ -33,6 +45,22 @@ const EntregaInfoModal = ({
       <Text style={styles.modalInfo}>
         Para {pedido.localizacao || 'Localização não informada'}
       </Text>
+      {/* Mapa com marcador se houver coordenadas */}
+      {latitude && longitude && (
+        <View style={styles.mapContainer}>
+          <MapView
+            style={styles.map}
+            initialRegion={{
+              latitude,
+              longitude,
+              latitudeDelta: 0.002,
+              longitudeDelta: 0.002,
+            }}
+          >
+            <Marker coordinate={{ latitude, longitude }} />
+          </MapView>
+        </View>
+      )}
       <Text style={styles.modalInfo}>
         Entregar para <Text style={styles.modalDest}>
           {clienteNome || pedido.cliente_nome || `Cliente #${pedido.cliente_id}`}
@@ -173,6 +201,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Nunito-Bold',
     textAlign: 'center',
+  },
+  mapContainer: {
+    width: '100%',
+    height: 200,
+    marginVertical: 12,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  map: {
+    flex: 1,
+    borderRadius: 8,
   },
 });
 

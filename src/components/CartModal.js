@@ -18,6 +18,8 @@ import LocalizacaoIcon from '../assets/icons/localizacaoIcon';
 import CompletedOrderModal from './CompletedOrderModal';
 import PedidoService from '../services/PedidoService';
 import LoginService from '../services/LoginService';
+import MapPickerModal from './MapPickerModal'; // Adicione este import
+
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -35,7 +37,15 @@ const CartModal = ({
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pedidoCriado, setPedidoCriado] = useState(null);
+  const [mapModalVisible, setMapModalVisible] = useState(false);
+  const handleOpenMap = () => setMapModalVisible(true);
 
+
+
+const handleSelectLocation = (location) => {
+  setLocalEntrega(`Lat: ${location.latitude.toFixed(5)}, Lng: ${location.longitude.toFixed(5)}`);
+  // Se quiser enviar as coordenadas para o backend, salve em outro estado também
+};
 // Função para calcular o total
 const calculateTotal = () => {
   if (!cartItems || !produtos) return 0;
@@ -340,18 +350,24 @@ const handleFinalizarPedido = async () => {
                 <Text style={styles.questionText}>Qual o local de entrega?</Text>
                 
                 {/* Input para local com ícone */}
-                <View style={styles.inputWithIcon}>
-                  <CustomInput
-                    placeholder="Ex: PPGCC, Bloco A, Sala 101"
-                    value={localEntrega}
-                    onChangeText={setLocalEntrega}
-                    style={styles.inputContainer}
-                    editable={!loading}
-                  />
-                  <View style={styles.iconContainer}>
-                    <LocalizacaoIcon width={20} height={20} color="#8B0BD5" />
+                  <View style={styles.inputWithIcon}>
+                    <CustomInput
+                      placeholder="Ex: PPGCC, Bloco A, Sala 101"
+                      value={localEntrega}
+                      onChangeText={setLocalEntrega}
+                      style={styles.inputContainer}
+                      editable={!loading}
+                    />
+                    <TouchableOpacity style={styles.iconContainer} onPress={handleOpenMap}>
+                      <LocalizacaoIcon width={20} height={20} color="#8B0BD5" />
+                    </TouchableOpacity>
                   </View>
-                </View>
+
+                  <MapPickerModal
+                    visible={mapModalVisible}
+                    onClose={() => setMapModalVisible(false)}
+                    onSelectLocation={handleSelectLocation}
+                  />
                 
                 {/* Lista de produtos */}
                 <View style={styles.itemsContainer}>
