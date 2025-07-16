@@ -199,20 +199,20 @@ const RestaurantOrderModal = ({
     
     try {
       setActionLoading(true);
-      console.log(`Atualizando pedido ${pedidoId} para "a_caminho"...`);
+      console.log(`Atualizando pedido ${pedidoId} para "pronto"...`);
       
-      // Atualizar status para "a_caminho"
-      await PedidoService.atualizarStatusPedido(pedidoId, 'a_caminho');
+      // Atualizar status para "pronto"
+      await PedidoService.atualizarStatusPedido(pedidoId, 'pronto');
       
       // Atualizar dados localmente
       setPedidoData(prev => ({
         ...prev,
-        status: 'a_caminho'
+        status: 'pronto'
       }));
       
       // Notificar componente pai
       if (onStatusUpdated) {
-        onStatusUpdated(pedidoId, 'a_caminho');
+        onStatusUpdated(pedidoId, 'pronto');
       }
       
       Alert.alert('Sucesso', 'Status atualizado para "Saiu para entrega"!');
@@ -346,7 +346,7 @@ const renderItens = () => {
       );
     }
     
-    // Para status 'a_caminho' e 'entregue', não há ações adicionais
+    // Para status 'pronto' e 'entregue', não há ações adicionais
     return null;
   };
 

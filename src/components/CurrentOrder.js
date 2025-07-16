@@ -41,7 +41,7 @@ const CurrentOrder = ({
     switch (status) {
       case 'aguardando': return 'Aguardando';
       case 'em_preparo': return 'Em preparo';
-      case 'pronto': return 'Pronto';
+      case 'pronto': return 'A caminho';
       case 'a_caminho': return 'A caminho';
       case 'entregue': return 'Entregue';
       case 'cancelado': return 'Cancelado';
