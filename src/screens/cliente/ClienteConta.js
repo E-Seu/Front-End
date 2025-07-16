@@ -5,6 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import ClienteService from '../../services/ClienteService';
 import SuporteIcon from '../../assets/icons/suporteIcon';
 import SairIcon from '../../assets/icons/sairIcon';
+import { Linking } from 'react-native';
+
 
 const ClienteConta = () => {
   const { user, logout } = useAuth();
@@ -66,10 +68,13 @@ const ClienteConta = () => {
     console.log('Recarregar carteira');
   };
 
-  const handleSuporte = () => {
-    // Funcionalidade será implementada futuramente
-    console.log('Suporte');
-  };
+const handleSuporte = () => {
+  const email = 'gabryella.rodrigues@aluno.uece.br'; // coloque o email desejado
+  const assunto = 'Suporte - App';
+  const corpo = 'Olá, preciso de ajuda com...';
+  const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+  Linking.openURL(mailtoUrl);
+};
 
   const formatarSaldo = (valor) => {
     return new Intl.NumberFormat('pt-BR', {

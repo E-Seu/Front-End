@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import EntregadorService from '../../services/EntregadorService';
 import SuporteIcon from '../../assets/icons/suporteIcon';
 import SairIcon from '../../assets/icons/sairIcon';
+import { Linking } from 'react-native';
 
 const EntregadorConta = () => {
   const { user, logout } = useAuth();
@@ -78,8 +79,11 @@ const EntregadorConta = () => {
   };
 
   const handleSuporte = () => {
-    // Funcionalidade será implementada futuramente
-    console.log('Suporte');
+    const email = 'gabryella.rodrigues@aluno.uece.br'; // coloque o email desejado
+    const assunto = 'Suporte - App';
+    const corpo = 'Olá, preciso de ajuda com...';
+    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    Linking.openURL(mailtoUrl);
   };
 
   const formatarSaldo = (valor) => {
