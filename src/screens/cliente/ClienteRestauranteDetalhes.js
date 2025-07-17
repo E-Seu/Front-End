@@ -321,9 +321,6 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
         'Pedido Ativo',
         `Você já possui um pedido ativo (${statusLabel}). Aguarde a entrega para fazer um novo pedido.`,
         [
-          { text: 'Ver Pedido', onPress: () => {
-            navigation.navigate('ClientePedidos');
-          }},
           { text: 'OK', style: 'cancel' }
         ]
       );

@@ -1,57 +1,84 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import OldOrderModal from './OldOrderModal';
 
 const OldOrder = ({ 
   dia = "dia exemplo",
   horario = "horario exemplo",
   nomeRestaurante = "Restaurante Exemplo",
   primeiroItem = "item exemplo",
+  pedidoOriginal,
+  navigation,
+  navigateToScreen,
   onPecaNovamantePress
 }) => {
+  const [showModal, setShowModal] = useState(false);
   
   const handlePecaNovamantePress = () => {
-    console.log('Peça Novamente pressionado');
-    if (onPecaNovamantePress) {
-      onPecaNovamantePress();
+    console.log('🔄 Peça Novamente pressionado para pedido:', pedidoOriginal?.pedido_id);
+    
+    if (pedidoOriginal) {
+      // Abrir modal personalizado
+      setShowModal(true);
+    } else {
+      // Fallback para função original
+      if (onPecaNovamantePress) {
+        onPecaNovamantePress();
+      }
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        {/* Lado esquerdo - Informações do pedido */}
-        <View style={styles.infoContainer}>
-          <View style={styles.horarioContainer}>
-            <Text style={styles.pedidoFeitoText}>Pedido feito em {dia} às {horario}</Text>
-          </View>
-          
-          <Text style={styles.nomeRestaurante}>{nomeRestaurante}</Text>
-          
-          <View style={styles.statusContainer}>
-            <Text style={styles.statusText}>Pedido concluído</Text>
-            <Image 
-              source={require('../assets/pedidoConcluído.png')}
-              style={styles.statusIcon}
-            />
-          </View>
-          
-          <Text style={styles.primeiroItem} numberOfLines={1}>
-            {primeiroItem}...
-          </Text>
-        </View>
+  const handleCloseModal = () => {
+    setShowModal(false);
+  };
 
-        {/* Lado direito - Apenas o botão */}
-        <View style={styles.rightContainer}>
-          <TouchableOpacity 
-            style={styles.pecaNovamanteButton}
-            onPress={handlePecaNovamantePress}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.pecaNovamanteText}>Peça Novamente</Text>
-          </TouchableOpacity>
+  return (
+    <>
+      <View style={styles.container}>
+        <View style={styles.content}>
+          {/* Lado esquerdo - Informações do pedido */}
+          <View style={styles.infoContainer}>
+            <View style={styles.horarioContainer}>
+              <Text style={styles.pedidoFeitoText}>Pedido feito em {dia} às {horario}</Text>
+            </View>
+            
+            <Text style={styles.nomeRestaurante}>{nomeRestaurante}</Text>
+            
+            <View style={styles.statusContainer}>
+              <Text style={styles.statusText}>Pedido concluído</Text>
+              <Image 
+                source={require('../assets/pedidoConcluído.png')}
+                style={styles.statusIcon}
+              />
+            </View>
+            
+            <Text style={styles.primeiroItem} numberOfLines={1}>
+              {primeiroItem}...
+            </Text>
+          </View>
+
+          {/* Lado direito - Apenas o botão */}
+          <View style={styles.rightContainer}>
+            <TouchableOpacity 
+              style={styles.pecaNovamanteButton}
+              onPress={handlePecaNovamantePress}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.pecaNovamanteText}>Peça Novamente</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </View>
+
+      {/* Modal para Peça Novamente */}
+      <OldOrderModal
+        visible={showModal}
+        onClose={handleCloseModal}
+        pedidoOriginal={pedidoOriginal}
+        navigation={navigation}
+        navigateToScreen={navigateToScreen}
+      />
+    </>
   );
 };
 
@@ -77,7 +104,7 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    minHeight: 110, // Ligeiramente maior para acomodar o status
+    minHeight: 110,
   },
 
   infoContainer: {

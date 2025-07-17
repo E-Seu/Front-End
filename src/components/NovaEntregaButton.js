@@ -3,12 +3,16 @@ import { View, Text, TouchableOpacity, Modal, StyleSheet, Animated, Pressable } 
 import EntregadorService from '../services/EntregadorService';
 import ClienteService from '../services/ClienteService';
 import RestaurantService from '../services/RestaurantService';
+import LoginService from '../services/LoginService';
+import { useAuth } from '../context/AuthContext';
 import EntregaInfoModal from './EntregaInfoModal';
 
 const NovaEntregaButton = () => {
+  const { user } = useAuth();
   const [modalVisible, setModalVisible] = useState(false);
   const [blinkAnim] = useState(new Animated.Value(1));
   const [pedido, setPedido] = useState(null);
+  const [entregadorId, setEntregadorId] = useState(null);
 
   // Novos estados para nomes
   const [restauranteNome, setRestauranteNome] = useState('');
@@ -17,6 +21,35 @@ const NovaEntregaButton = () => {
   // Estado para controlar se mostra o modal detalhado
   const [showDetalhe, setShowDetalhe] = useState(false);
   const [pedidoAceito, setPedidoAceito] = useState(false);
+
+  // ✅ Carregar dados do entregador ao montar o componente
+  useEffect(() => {
+    loadEntregadorData();
+  }, []);
+
+  const loadEntregadorData = async () => {
+    try {
+      // Primeiro tentar do contexto de autenticação
+      let userId = user?.entregador_id || user?.id;
+      
+      // Se não tiver, tentar do LoginService
+      if (!userId) {
+        const currentUser = await LoginService.getCurrentUser();
+        if (currentUser.success) {
+          userId = currentUser.user.id || currentUser.user.usuario_id;
+        }
+      }
+      
+      if (userId) {
+        setEntregadorId(userId);
+        console.log('✅ Entregador ID definido no NovaEntregaButton:', userId);
+      } else {
+        console.error('❌ Não foi possível obter ID do entregador');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados do entregador:', error);
+    }
+  };
 
   useEffect(() => {
     const blink = Animated.loop(
@@ -87,21 +120,27 @@ const NovaEntregaButton = () => {
     fetchNomes();
   }, [pedido]);
 
-  // Aceitar pedido e permitir abrir detalhes
+  // 
   const handleAceitarPedido = async () => {
-    const entregadorId = 1; // ajuste conforme sua lógica de autenticação
     if (pedido && entregadorId && !pedidoAceito) {
-      await EntregadorService.aceitarPedido(entregadorId, pedido.pedido_id);
-      setPedidoAceito(true);
-      setShowDetalhe(true);
-      setModalVisible(false);
+      console.log(`🔄 Entregador ${entregadorId} aceitando pedido ${pedido.pedido_id}...`);
+      const resultado = await EntregadorService.aceitarPedido(entregadorId, pedido.pedido_id);
+      if (resultado) {
+        setPedidoAceito(true);
+        setShowDetalhe(true);
+        setModalVisible(false);
+      }
+    } else {
+      console.error('❌ Não foi possível aceitar pedido:', { pedido, entregadorId, pedidoAceito });
     }
   };
 
- const handleRejeitarPedido = async () => {
+  // 
+  const handleRejeitarPedido = async () => {
     if (pedidoAceito) return; // Não pode rejeitar se já aceitou
-    const entregadorId = 1; // ajuste conforme sua lógica de autenticação
+    
     if (pedido && entregadorId) {
+      console.log(`🔄 Entregador ${entregadorId} rejeitando pedido ${pedido.pedido_id}...`);
       await EntregadorService.rejeitarPedido(entregadorId, pedido.pedido_id);
 
       // Buscar próximo pedido disponível
@@ -135,6 +174,11 @@ const NovaEntregaButton = () => {
     // ...sua lógica de conclusão...
   };
 
+  // 
+  if (!entregadorId) {
+    return null;
+  }
+
   return (
     <>
       <Animated.View style={[styles.buttonContainer, { opacity: blinkAnim }]}>
@@ -146,6 +190,7 @@ const NovaEntregaButton = () => {
           <Text style={styles.novaEntregaText}>Nova Entrega</Text>
         </TouchableOpacity>
       </Animated.View>
+
       <Modal
         visible={modalVisible && !pedidoAceito}
         animationType="fade"
@@ -245,6 +290,7 @@ const NovaEntregaButton = () => {
             pedido={pedido}
             restauranteNome={restauranteNome}
             clienteNome={clienteNome}
+            entregadorId={entregadorId}
             onConcluirEntrega={handleConcluirEntrega}
           />
         </View>

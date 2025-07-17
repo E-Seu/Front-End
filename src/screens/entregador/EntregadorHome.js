@@ -3,36 +3,142 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ActivityIndicat
 import MapView, { Marker } from 'react-native-maps';
 import NovaEntregaButton from '../../components/NovaEntregaButton';
 import EntregadorService from '../../services/EntregadorService';
-
-const ENTREGADOR_ID = 1; // Troque pelo id real do entregador
+import LoginService from '../../services/LoginService';
+import { useAuth } from '../../context/AuthContext';
 
 const EntregadorHome = ({ route }) => {
-  // Receba o id do entregador logado via props, contexto ou route.params
-  const entregadorId = route?.params?.entregadorId || ENTREGADOR_ID;
-
+  const { user } = useAuth();
   const [disponivel, setDisponivel] = useState(false);
   const [loadingDisponivel, setLoadingDisponivel] = useState(false);
   const [pedidoPronto, setPedidoPronto] = useState(null);
+  const [usuarioId, setUsuarioId] = useState(null);
+  const [entregadorData, setEntregadorData] = useState(null);
+  const [saldoAtual, setSaldoAtual] = useState(0);
 
+  // ✅ Função para recarregar saldo
+  const recarregarSaldo = async () => {
+    try {
+      if (usuarioId) {
+        const saldoData = await EntregadorService.visualizarSaldoEntregador(usuarioId);
+        if (saldoData) {
+          setSaldoAtual(saldoData.saldo || 0);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erro ao recarregar saldo:', error);
+    }
+  };
+
+  // ✅ Recarregar saldo quando dados são carregados
   useEffect(() => {
-    const fetchStatus = async () => {
-      const entregador = await EntregadorService.getEntregador(entregadorId);
-      setDisponivel(!!entregador?.disponivel);
+    if (usuarioId) {
+      fetchStatus();
+      recarregarSaldo();
+    }
+  }, [usuarioId]);
 
+  // ✅ Carregar dados do entregador
+  useEffect(() => {
+    loadEntregadorData();
+  }, []);
+
+  // ✅ Carregar status quando usuarioId estiver disponível
+  useEffect(() => {
+    if (usuarioId) {
+      fetchStatus();
+    }
+  }, [usuarioId]);
+
+  const loadEntregadorData = async () => {
+    try {
+      // Primeiro tentar do route.params
+      let userId = route?.params?.entregadorId;
+      
+      // Se não tiver, tentar do contexto de autenticação
+      if (!userId) {
+        userId = user?.id || user?.usuario_id;
+      }
+      
+      // Se ainda não tiver, tentar do LoginService
+      if (!userId) {
+        const currentUser = await LoginService.getCurrentUser();
+        if (currentUser.success) {
+          userId = currentUser.user.id || currentUser.user.usuario_id;
+        }
+      }
+      
+      if (userId) {
+        setUsuarioId(userId);
+        console.log('✅ Usuario ID definido na Home:', userId);
+        
+        // ✅ Buscar dados completos do entregador
+        const entregador = await EntregadorService.getEntregadorByUsuarioId(userId);
+        if (entregador) {
+          setEntregadorData(entregador);
+          console.log('✅ Dados do entregador carregados:', entregador);
+        }
+      } else {
+        console.error('❌ Não foi possível obter ID do usuário');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados do entregador:', error);
+    }
+  };
+
+  const fetchStatus = async () => {
+    try {
+      // ✅ Buscar dados do entregador usando usuario_id
+      const entregador = await EntregadorService.getEntregador(usuarioId);
+      if (entregador) {
+        setDisponivel(!!entregador.disponivel);
+        setEntregadorData(entregador);
+        console.log('✅ Status do entregador atualizado:', entregador);
+      }
+
+      // Buscar pedidos disponíveis
       const pedidos = await EntregadorService.buscarPedidosDisponiveis();
       const pedido = pedidos.find(p => p.status === 'pronto');
       setPedidoPronto(pedido || null);
-    };
-    fetchStatus();
-  }, [entregadorId]);
+    } catch (error) {
+      console.error('❌ Erro ao buscar status:', error);
+    }
+  };
 
   const handleToggleDisponivel = async () => {
+    if (!usuarioId) {
+      console.error('❌ ID do usuário não disponível');
+      return;
+    }
+
     setLoadingDisponivel(true);
     const novoDisponivel = !disponivel;
-    await EntregadorService.atualizarDisponibilidade(entregadorId, novoDisponivel);
-    setDisponivel(novoDisponivel);
+    
+    console.log(`🔄 Usuário ${usuarioId} alterando disponibilidade para ${novoDisponivel}...`);
+    
+    // ✅ Usar usuario_id para atualizar disponibilidade
+    const resultado = await EntregadorService.atualizarDisponibilidade(usuarioId, novoDisponivel);
+    
+    if (resultado) {
+      setDisponivel(novoDisponivel);
+      console.log('✅ Disponibilidade atualizada com sucesso');
+    } else {
+      console.error('❌ Falha ao atualizar disponibilidade');
+    }
+    
     setLoadingDisponivel(false);
   };
+
+  // ✅ Não renderizar se não tiver usuarioId
+  if (!usuarioId) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8B0BD5" />
+          <Text style={styles.loadingText}>Carregando dados do entregador...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -79,14 +185,8 @@ const EntregadorHome = ({ route }) => {
             description="Aqui é a UECE"
           />
         </MapView>
-        {/* Botão Nova Entrega aparece se houver pedido pronto */}
-        {pedidoPronto && (
-          <NovaEntregaButton entregaInfo={{
-            restaurante: pedidoPronto.restaurante || 'Nome do Restaurante',
-            destino: pedidoPronto.destino || 'Para Bloco X, canto tal tal',
-            cliente: pedidoPronto.cliente || 'Fulano Alheio'
-          }} />
-        )}
+        {/* ✅ Botão Nova Entrega aparece se houver pedido pronto */}
+        {pedidoPronto && <NovaEntregaButton />}
       </View>
     </SafeAreaView>
   );
@@ -143,6 +243,17 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#888888',
+    fontFamily: 'Nunito-Regular',
   },
 });
 
