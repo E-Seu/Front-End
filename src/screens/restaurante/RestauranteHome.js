@@ -24,7 +24,7 @@ const RestauranteHome = ({ navigation, route }) => {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusLoading, setStatusLoading] = useState(false);
-  const [showConfigModal, setShowConfigModal] = useState(false);
+  // const [showConfigModal, setShowConfigModal] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [showUpdateProductModal, setShowUpdateProductModal] = useState(false);
   const [productToEdit, setProductToEdit] = useState(null);
@@ -134,11 +134,11 @@ const RestauranteHome = ({ navigation, route }) => {
     }
   };
 
-  const handleConfigurationPress = () => {
-    console.log('Configurações do restaurante pressionado');
-    setShowConfigModal(true);
-    // TODO: Implementar modal de configurações
-  };
+  // const handleConfigurationPress = () => {
+  //   console.log('Configurações do restaurante pressionado');
+  //   setShowConfigModal(true);
+  //   // TODO: Implementar modal de configurações
+  // };
 
   const handleAddProductPress = () => {
     console.log('Adicionar produto pressionado');
@@ -293,12 +293,12 @@ const RestauranteHome = ({ navigation, route }) => {
           <View style={styles.header}>
             <View style={styles.headerSpacer} />
             
-            <TouchableOpacity 
+            {/* <TouchableOpacity 
               style={styles.headerButton} 
               onPress={handleConfigurationPress}
             >
               <ConfigurationIcon width={24} height={24} />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
 
           {/* Card de informações do restaurante */}

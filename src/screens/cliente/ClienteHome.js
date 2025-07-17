@@ -80,17 +80,17 @@ const ClienteHome = () => {
     });
   };
 
-  const handleOpcoesPress = () => {
-    console.log('⚙️ Opções pressionado');
-    // Aqui você pode navegar para uma tela de configurações
-    // navigation.navigate('ClienteConfiguracoes');
-  };
+  // const handleOpcoesPress = () => {
+  //   console.log('⚙️ Opções pressionado');
+  //   // Aqui você pode navegar para uma tela de configurações
+  //   // navigation.navigate('ClienteConfiguracoes');
+  // };
 
-  const handleNotificacaoPress = () => {
-    console.log('🔔 Notificação pressionado');
-    // Aqui você pode navegar para uma tela de notificações
-    // navigation.navigate('ClienteNotificacoes');
-  };
+  // const handleNotificacaoPress = () => {
+  //   console.log('🔔 Notificação pressionado');
+  //   // Aqui você pode navegar para uma tela de notificações
+  //   // navigation.navigate('ClienteNotificacoes');
+  // };
 
   const handleFavoritedPress = async (restaurantId, isFavorite) => {
     try {
@@ -157,12 +157,12 @@ const ClienteHome = () => {
             <TouchableOpacity style={styles.iconButton} onPress={handleFavoritosPress}>
               <FavoritosIcon width={24} height={24} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={handleOpcoesPress}>
+            {/* <TouchableOpacity style={styles.iconButton} onPress={handleOpcoesPress}>
               <OpcoesIcon width={24} height={24} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton} onPress={handleNotificacaoPress}>
               <NotificacaoIcon width={24} height={24} />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
         
@@ -190,7 +190,7 @@ const ClienteHome = () => {
             <FavoritosIcon width={24} height={24} />
           </TouchableOpacity>
           
-          <TouchableOpacity 
+          {/* <TouchableOpacity 
             style={styles.iconButton} 
             onPress={handleOpcoesPress}
           >
@@ -202,7 +202,7 @@ const ClienteHome = () => {
             onPress={handleNotificacaoPress}
           >
             <NotificacaoIcon width={24} height={24} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
 
