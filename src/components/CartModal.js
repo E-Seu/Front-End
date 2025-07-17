@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -18,6 +18,7 @@ import LocalizacaoIcon from '../assets/icons/localizacaoIcon';
 import CompletedOrderModal from './CompletedOrderModal';
 import PedidoService from '../services/PedidoService';
 import LoginService from '../services/LoginService';
+import ClienteService from '../services/ClienteService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -29,12 +30,36 @@ const CartModal = ({
   cartItems, 
   produtos, 
   navigation,
-  navigateToScreen // ✅ Adicionar navigateToScreen como prop
+  navigateToScreen
 }) => {
   const [localEntrega, setLocalEntrega] = useState('');
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pedidoCriado, setPedidoCriado] = useState(null);
+  const [saldoCliente, setSaldoCliente] = useState(0);
+
+  // Carregar saldo do cliente quando o modal abrir
+  useEffect(() => {
+    if (visible) {
+      loadSaldoCliente();
+    }
+  }, [visible]);
+
+  const loadSaldoCliente = async () => {
+    try {
+      const currentUser = await LoginService.getCurrentUser();
+      if (currentUser.success) {
+        const clienteId = currentUser.user.id || currentUser.user.usuario_id;
+        const saldoResponse = await ClienteService.visualizarSaldo(clienteId);
+        if (saldoResponse) {
+          setSaldoCliente(saldoResponse.saldo);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar saldo do cliente:', error);
+      setSaldoCliente(0);
+    }
+  };
 
 // Função para calcular o total
 const calculateTotal = () => {
@@ -92,6 +117,16 @@ const handleFinalizarPedido = async () => {
     return;
   }
 
+  // ✅ NOVA VALIDAÇÃO: Verificar se o saldo é suficiente
+  if (saldoCliente < total) {
+    Alert.alert(
+      'Saldo Insuficiente',
+      `Seu saldo atual é R$ ${saldoCliente.toFixed(2)} e o total do pedido é R$ ${total.toFixed(2)}. Recarregue sua carteira para continuar.`,
+      [{ text: 'OK' }]
+    );
+    return;
+  }
+
   try {
     setLoading(true);
     console.log('🛒 Iniciando criação do pedido...');
@@ -106,24 +141,15 @@ const handleFinalizarPedido = async () => {
     const itensCarrinho = getCartItemsWithDetails();
     const clienteId = currentUser.user.id || currentUser.user.usuario_id;
 
-    // ✅ NOVA VALIDAÇÃO: Verificar se o cliente já tem pedido ativo
+    // ✅ VALIDAÇÃO: Verificar se o cliente já tem pedido ativo
     const { temPedidoAtivo, pedidoAtivo } = await PedidoService.clienteTemPedidoAtivo(clienteId);
     
     if (temPedidoAtivo) {
       const statusLabel = PedidoService.getStatusLabel(pedidoAtivo.status);
       Alert.alert(
-        'Pedido Ativo Encontrado',
+        'Pedido Ativo',
         `Você já possui um pedido ativo (${statusLabel}). Aguarde a entrega para fazer um novo pedido.`,
-        [
-          { text: 'Ver Pedido', onPress: () => {
-            onClose();
-            // Navegar para a tela de pedidos
-            if (typeof navigateToScreen === 'function') {
-              navigateToScreen('ClientePedidos');
-            }
-          }},
-          { text: 'OK', style: 'cancel' }
-        ]
+        [{ text: 'OK', style: 'cancel' }]
       );
       return;
     }
@@ -163,6 +189,11 @@ const handleFinalizarPedido = async () => {
     if (novoPedido) {
       console.log('✅ Pedido criado com sucesso:', novoPedido);
       
+      // ✅ Atualizar saldo do cliente
+      const novoSaldo = saldoCliente - total;
+      await ClienteService.atualizarSaldo(clienteId, novoSaldo);
+      setSaldoCliente(novoSaldo);
+      
       // Salvar dados do pedido criado
       setPedidoCriado(novoPedido);
       
@@ -186,12 +217,6 @@ const handleFinalizarPedido = async () => {
     // ✅ Tratamento específico para pedido ativo existente
     if (error.message.includes('pedido ativo')) {
       Alert.alert('Pedido Ativo', error.message, [
-        { text: 'Ver Pedido', onPress: () => {
-          onClose();
-          if (typeof navigateToScreen === 'function') {
-            navigateToScreen('ClientePedidos');
-          }
-        }},
         { text: 'OK', style: 'cancel' }
       ]);
     } else {
@@ -239,39 +264,6 @@ const handleFinalizarPedido = async () => {
     return observacao;
   };
 
- const handleGoToOrders = () => {
-    console.log('🔄 CartModal - Navegando para tela de pedidos...');
-    console.log('🔄 Pedido criado:', pedidoCriado);
-    
-    setShowCompletedModal(false);
-    
-    // Navegar para a tela de pedidos
-    if (typeof navigateToScreen === 'function') {
-      console.log('🔄 Usando navigateToScreen do AppLayout...');
-      navigateToScreen('ClientePedidos', { 
-        refresh: true,
-        newOrderId: pedidoCriado?.pedido_id,
-        timestamp: Date.now()
-      });
-    }
-    else if (navigation && navigation.navigate) {
-      console.log('🔄 Usando React Navigation...');
-      navigation.navigate('ClientePedidos', { 
-        refresh: true,
-        newOrderId: pedidoCriado?.pedido_id,
-        timestamp: Date.now()
-      });
-    }
-    else {
-      console.warn('⚠️ Nem navigateToScreen nem navigation estão disponíveis');
-    }
-    
-    // Limpar estado após navegação
-    setTimeout(() => {
-      setPedidoCriado(null);
-    }, 500);
-  };
-
   const handleCloseModal = () => {
     if (!loading) {
       onClose();
@@ -299,6 +291,7 @@ const handleFinalizarPedido = async () => {
   const cartItemsWithDetails = getCartItemsWithDetails();
   const total = calculateTotal();
   const isCartEmpty = !hasItemsInCart();
+  const saldoInsuficiente = saldoCliente < total;
 
   return (
     <>
@@ -383,6 +376,23 @@ const handleFinalizarPedido = async () => {
                   <Text style={styles.totalText}>R$ {total.toFixed(2)}</Text>
                 </View>
                 
+                {/* Saldo da carteira */}
+                <View style={styles.saldoContainer}>
+                  <Text style={styles.saldoLabel}>Saldo atual da Carteira</Text>
+                  <Text style={[styles.saldoText, saldoInsuficiente && styles.saldoInsuficiente]}>
+                    R$ {saldoCliente.toFixed(2)}
+                  </Text>
+                </View>
+                
+                {/* Aviso de saldo insuficiente */}
+                {saldoInsuficiente && !isCartEmpty && (
+                  <View style={styles.avisoSaldoContainer}>
+                    <Text style={styles.avisoSaldoText}>
+                      Saldo insuficiente! Recarregue sua carteira para continuar.
+                    </Text>
+                  </View>
+                )}
+                
                 {/* Resumo do pedido */}
                 {!isCartEmpty && (
                   <View style={styles.resumoContainer}>
@@ -408,11 +418,11 @@ const handleFinalizarPedido = async () => {
                 <TouchableOpacity 
                   style={[
                     styles.finalizarButton,
-                    (isCartEmpty || loading) && styles.finalizarButtonDisabled
+                    (isCartEmpty || loading || saldoInsuficiente) && styles.finalizarButtonDisabled
                   ]} 
                   onPress={handleFinalizarPedido}
-                  activeOpacity={(isCartEmpty || loading) ? 1 : 0.8}
-                  disabled={isCartEmpty || loading}
+                  activeOpacity={(isCartEmpty || loading || saldoInsuficiente) ? 1 : 0.8}
+                  disabled={isCartEmpty || loading || saldoInsuficiente}
                 >
                   {loading ? (
                     <View style={styles.loadingContainer}>
@@ -422,7 +432,7 @@ const handleFinalizarPedido = async () => {
                   ) : (
                     <Text style={[
                       styles.finalizarButtonText,
-                      (isCartEmpty || loading) && styles.finalizarButtonTextDisabled
+                      (isCartEmpty || loading || saldoInsuficiente) && styles.finalizarButtonTextDisabled
                     ]}>
                       Finalizar Pedido
                     </Text>
@@ -437,11 +447,9 @@ const handleFinalizarPedido = async () => {
       <CompletedOrderModal
         visible={showCompletedModal}
         onClose={handleCloseCompletedModal}
-        onGoToOrders={handleGoToOrders}
         pedidoId={pedidoCriado?.pedido_id}
         restaurantName={restaurantName}
         total={total}
-        navigateToScreen={navigateToScreen} // ✅ Passar navigateToScreen
       />
     </>
   );
@@ -506,13 +514,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito-SemiBold',
     color: '#222222',
     textAlign: 'left',
-    marginBottom: 10,
-  },
-  
-  debugInfo: {
-    fontSize: 10,
-    fontFamily: 'monospace',
-    color: '#999999',
     marginBottom: 10,
   },
   
@@ -613,7 +614,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   
   totalText: {
@@ -626,6 +627,45 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Nunito-ExtraBold',
     color: '#4E0777',
+  },
+  
+  saldoContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  
+  saldoLabel: {
+    fontSize: 14,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#888888',
+  },
+  
+  saldoText: {
+    fontSize: 14,
+    fontFamily: 'Nunito-Bold',
+    color: '#888888',
+  },
+  
+  saldoInsuficiente: {
+    color: '#FF4444',
+  },
+  
+  avisoSaldoContainer: {
+    backgroundColor: '#FFE5E5',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFB3B3',
+  },
+  
+  avisoSaldoText: {
+    fontSize: 12,
+    fontFamily: 'Nunito-SemiBold',
+    color: '#CC0000',
+    textAlign: 'center',
   },
   
   resumoContainer: {

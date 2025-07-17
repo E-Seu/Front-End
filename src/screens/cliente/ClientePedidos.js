@@ -7,7 +7,7 @@ import PedidoService from '../../services/PedidoService';
 import LoginService from '../../services/LoginService';
 import RestaurantService from '../../services/RestaurantService';
 
-const ClientePedidos = ({ navigation, route }) => {
+const ClientePedidos = ({ navigation, route, navigateToScreen }) => {
   const [pedidoAtual, setPedidoAtual] = useState(null);
   const [historicoPedidos, setHistoricoPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +15,7 @@ const ClientePedidos = ({ navigation, route }) => {
   const [usuarioId, setUsuarioId] = useState(null);
   const [clienteId, setClienteId] = useState(null);
   const [restaurantesCache, setRestaurantesCache] = useState(new Map());
+  const [pedidosCompletos, setPedidosCompletos] = useState(new Map()); // ✅ Cache para pedidos completos
 
   useEffect(() => {
     loadUserData();
@@ -44,13 +45,16 @@ const ClientePedidos = ({ navigation, route }) => {
   );
 
   useEffect(() => {
-    if (route.params?.refresh && clienteId) {
-      setTimeout(() => {
-        loadPedidos();
-      }, 500);
+  if (route.params?.refresh && clienteId) {
+    setTimeout(() => {
+      loadPedidos();
+    }, 500);
+    
+    if (navigation && navigation.setParams) {
       navigation.setParams({ refresh: false });
     }
-  }, [route.params?.refresh, clienteId]);
+  }
+}, [route.params?.refresh, clienteId, navigation]);
 
   const loadUserData = async () => {
     try {
@@ -76,6 +80,13 @@ const ClientePedidos = ({ navigation, route }) => {
       
       const pedidos = await PedidoService.listarPedidosCliente(clienteId);
       console.log('📦 Pedidos carregados:', pedidos);
+
+      // ✅ Salvar pedidos completos no cache
+      const pedidosCompletosMapa = new Map();
+      pedidos.forEach(pedido => {
+        pedidosCompletosMapa.set(pedido.pedido_id, pedido);
+      });
+      setPedidosCompletos(pedidosCompletosMapa);
 
       // ✅ CORREÇÃO: Usar função correta do PedidoService
       const pedidoAtivoMaisRecente = PedidoService.encontrarPedidoAtual(pedidos);
@@ -118,7 +129,7 @@ const ClientePedidos = ({ navigation, route }) => {
     }
   };
 
-    const atualizarPedidos = async () => {
+  const atualizarPedidos = async () => {
     await loadPedidos();
   };
 
@@ -167,7 +178,7 @@ const ClientePedidos = ({ navigation, route }) => {
     const nomeRestaurante = await obterNomeRestaurante(pedido.restaurante_id);
     return {
       id: pedido.pedido_id,
-      pedidoId: pedido.pedido_id, // Adicionar pedidoId para o modal
+      pedidoId: pedido.pedido_id,
       horario: hora,
       nomeRestaurante,
       primeiroItem: pedido.observacao || `Pedido #${pedido.pedido_id}`,
@@ -175,7 +186,7 @@ const ClientePedidos = ({ navigation, route }) => {
       precoTotal: pedido.preco_total,
       localizacao: pedido.localizacao,
       observacao: pedido.observacao,
-      pedido: pedido // Passar o pedido completo
+      pedido: pedido
     };
   };
 
@@ -189,7 +200,9 @@ const ClientePedidos = ({ navigation, route }) => {
       nomeRestaurante,
       primeiroItem: pedido.observacao || `Pedido #${pedido.pedido_id}`,
       status: pedido.status,
-      precoTotal: pedido.preco_total
+      precoTotal: pedido.preco_total,
+      // ✅ Adicionar pedido completo para o modal
+      pedidoOriginal: pedido
     };
   };
 
@@ -197,6 +210,7 @@ const ClientePedidos = ({ navigation, route }) => {
     setRefreshing(true);
     PedidoService.limparCache?.();
     setRestaurantesCache(new Map());
+    setPedidosCompletos(new Map());
     await loadPedidos();
   };
 
@@ -207,7 +221,14 @@ const ClientePedidos = ({ navigation, route }) => {
 
   const handlePecaNovamanete = async (pedido) => {
     try {
-      const pedidoCompleto = await PedidoService.buscarPedido(pedido.id);
+      // ✅ Buscar pedido completo do cache primeiro
+      let pedidoCompleto = pedidosCompletos.get(pedido.id);
+      
+      // Se não estiver no cache, buscar via API
+      if (!pedidoCompleto) {
+        pedidoCompleto = await PedidoService.buscarPedido(pedido.id);
+      }
+      
       if (pedidoCompleto && navigation?.navigate) {
         navigation.navigate('ClienteRestauranteDetalhes', {
           restaurantId: pedidoCompleto.restaurante_id,
@@ -215,11 +236,12 @@ const ClientePedidos = ({ navigation, route }) => {
           pedidoOriginal: pedidoCompleto
         });
       }
-    } catch (error) {}
+    } catch (error) {
+      console.error('❌ Erro ao buscar pedido para repetir:', error);
+    }
   };
 
   const temPedidoAtual = pedidoAtual && pedidoAtual.status && PedidoService.isPedidoAtivo(pedidoAtual.status);
-
 
   const renderOldOrderItem = ({ item }) => (
     <OldOrder
@@ -229,6 +251,9 @@ const ClientePedidos = ({ navigation, route }) => {
       primeiroItem={item.primeiroItem}
       precoTotal={item.precoTotal}
       status={item.status}
+      pedidoOriginal={item.pedidoOriginal} // ✅ Passar pedido completo
+      navigation={navigation}
+      navigateToScreen={navigateToScreen} // ✅ Passar navigateToScreen
       onPecaNovamantePress={() => handlePecaNovamanete(item)}
     />
   );
@@ -258,7 +283,7 @@ const ClientePedidos = ({ navigation, route }) => {
     );
   }
 
- return (
+  return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>PEDIDOS</Text>
@@ -287,7 +312,7 @@ const ClientePedidos = ({ navigation, route }) => {
             pedidoId={pedidoAtual.pedidoId}
             pedido={pedidoAtual.pedido}
             onVisualizarPress={handleVisualizarPedido}
-            onPedidoAtualAlterado={atualizarPedidos} // <-- NOVO: passa callback
+            onPedidoAtualAlterado={atualizarPedidos}
           />
         ) : (
           <EmptyStateComponent 

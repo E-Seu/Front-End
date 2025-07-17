@@ -35,6 +35,8 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
     maxPrice: null,
     restrictions: []
   });
+  // ✅ NOVO: Estado para dados atualizados do restaurante
+  const [restaurantData, setRestaurantData] = useState(restaurant);
 
   // 🔍 LOG CRÍTICO: Verificar os dados do restaurante
   console.log('🏪 ClienteRestauranteDetalhes - Dados do restaurante:');
@@ -93,6 +95,25 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
     }
   };
 
+  // ✅ NOVO: Função para carregar dados atualizados do restaurante
+  const loadRestaurantData = async () => {
+    try {
+      console.log('🔄 Carregando dados atualizados do restaurante:', restaurantId);
+      
+      if (restaurantId) {
+        const updatedRestaurant = await RestaurantService.getRestaurantById(restaurantId);
+        if (updatedRestaurant) {
+          console.log('📦 Dados atualizados do restaurante:', updatedRestaurant);
+          setRestaurantData(updatedRestaurant);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados do restaurante:', error);
+      // Manter dados originais em caso de erro
+      setRestaurantData(restaurant);
+    }
+  };
+
   const loadRestaurantProducts = async () => {
     try {
       setLoading(true);
@@ -114,11 +135,24 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
     }
   };
 
-  // Função para refresh (pull to refresh)
+  // ✅ MODIFICADO: Função para refresh atualizada
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadRestaurantProducts();
-    setRefreshing(false);
+    console.log('🔄 Iniciando refresh - carregando dados atualizados...');
+    
+    try {
+      // Carregar dados atualizados do restaurante E produtos em paralelo
+      await Promise.all([
+        loadRestaurantData(),
+        loadRestaurantProducts()
+      ]);
+      
+      console.log('✅ Refresh concluído com sucesso');
+    } catch (error) {
+      console.error('❌ Erro durante refresh:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // Função para aplicar filtros
@@ -194,26 +228,32 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
 
   // Seleciona a mesma imagem que o RestaurantItem
   const getImageForRestaurant = useMemo(() => {
-    const restaurantName = restaurant?.nome || 'Restaurante Padrão';
+    const restaurantName = restaurantData?.nome || 'Restaurante Padrão';
     const hash = generateHash(restaurantName);
     const imageIndex = hash % restaurantImages.length;
     return restaurantImages[imageIndex];
-  }, [restaurant?.nome]);
+  }, [restaurantData?.nome]);
 
-  // Usar as informações reais do restaurante com os nomes corretos da API
+  // ✅ MODIFICADO: Usar dados atualizados do restaurante
   const restaurantDetails = {
-    nome: restaurant?.nome || "Nome do Restaurante",
-    info: restaurant?.info || "Informações do restaurante",
-    local: restaurant?.local || restaurant?.localizacao || "Local do restaurante",
-    horarioAbertura: restaurant?.horario_abertura || "08:00",
-    horarioFechamento: restaurant?.horario_fechamento || "22:00",
-    numeroEstrelas: restaurant?.numero_estrelas || 0,
-    isAberto: restaurant?.disponivel !== undefined ? restaurant.disponivel : true,
-    telefone: restaurant?.telefone || "",
-    tipo_restaurante: restaurant?.tipo_restaurante || "",
-    saldo: restaurant?.saldo || 0
+    nome: restaurantData?.nome || "Nome do Restaurante",
+    info: restaurantData?.info || "Informações do restaurante",
+    local: restaurantData?.local || restaurantData?.localizacao || "Local do restaurante",
+    horarioAbertura: restaurantData?.horario_abertura || "08:00",
+    horarioFechamento: restaurantData?.horario_fechamento || "22:00",
+    numeroEstrelas: restaurantData?.numero_estrelas || 0,
+    isAberto: restaurantData?.disponivel !== undefined ? restaurantData.disponivel : true,
+    telefone: restaurantData?.telefone || "",
+    tipo_restaurante: restaurantData?.tipo_restaurante || "",
+    saldo: restaurantData?.saldo || 0
   };
 
+  // ✅ NOVO: Log para debug do status
+  useEffect(() => {
+    console.log('📊 Status do restaurante atualizado:');
+    console.log('📦 restaurantData.disponivel:', restaurantData?.disponivel);
+    console.log('📦 restaurantDetails.isAberto:', restaurantDetails.isAberto);
+  }, [restaurantData?.disponivel, restaurantDetails.isAberto]);
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -233,8 +273,12 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
     console.log('🔄 Mudança de quantidade:');
     console.log('📦 Produto:', produtoInfo);
     console.log('📦 Nova quantidade:', quantidade);
-    console.log('📦 Produto restaurante_id:', produtoInfo?.restaurante_id);
-    console.log('📦 Tela restaurante_id:', restaurantId);
+
+    // ✅ Verificar se restaurante está disponível
+    if (!restaurantDetails.isAberto) {
+      Alert.alert('Restaurante Indisponível', 'Este restaurante está temporariamente indisponível.');
+      return;
+    }
 
     // Validar se o produto pertence ao restaurante atual
     if (produtoInfo?.restaurante_id && produtoInfo.restaurante_id !== restaurantId) {
@@ -264,16 +308,19 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
   const handleCarrinhoPress = () => {
     console.log('🛒 Botão do carrinho pressionado');
     
-    // ✅ Verificar se tem pedido ativo antes de abrir carrinho
+    // ✅ Verificar se restaurante está disponível
+    if (!restaurantDetails.isAberto) {
+      Alert.alert('Restaurante Indisponível', 'Este restaurante está temporariamente indisponível.');
+      return;
+    }
+    
+    // Verificar se tem pedido ativo antes de abrir carrinho
     if (temPedidoAtivo) {
       const statusLabel = PedidoService.getStatusLabel(pedidoAtivo.status);
       Alert.alert(
         'Pedido Ativo',
         `Você já possui um pedido ativo (${statusLabel}). Aguarde a entrega para fazer um novo pedido.`,
         [
-          { text: 'Ver Pedido', onPress: () => {
-            navigation.navigate('ClientePedidos');
-          }},
           { text: 'OK', style: 'cancel' }
         ]
       );
@@ -346,6 +393,7 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
         valor={item.valor || item.preco}
         tempo_preparo={item.tempo_preparo}
         disponivel={item.disponivel}
+        restauranteDisponivel={restaurantDetails.isAberto} // ✅ Usar dados atualizados
         selos={item.selos}
         onQuantityChange={handleQuantityChange}
       />
@@ -547,14 +595,14 @@ const ClienteRestauranteDetalhes = ({ navigation, route }) => {
       {/* Botão de carrinho flutuante */}
       <FloatingCartButton />
       
-      {/* 🎯 MODAL DO CARRINHO - VERIFICAR ESTAS PROPS */}
+      {/* Modal do carrinho */}
       <CartModal
         visible={showCartModal}
         onClose={() => setShowCartModal(false)}
         restaurantName={restaurantDetails.nome}
-        restaurantId={restaurantId} // 🔍 Esta é a prop crítica
+        restaurantId={restaurantId}
         cartItems={carrinho}
-        produtos={produtos} // Usar produtos originais no carrinho
+        produtos={produtos}
       />
       
       {/* Modal de Filtros */}

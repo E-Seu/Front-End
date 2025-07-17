@@ -6,14 +6,49 @@ const EntregaInfoModal = ({
   pedido,
   restauranteNome,
   clienteNome,
+  entregadorId,
   onConcluirEntrega,
 }) => {
   if (!pedido) return null;
 
+  // ✅ Calcular ganho do entregador (2% do total)
+  const calcularGanhoEntregador = (precoTotal) => {
+    const total = parseFloat(precoTotal) || 0;
+    return total * 0.05; // 5% do total
+  };
+
+  const precoTotal = parseFloat(pedido.preco_total) || 0;
+  const ganhoEntregador = calcularGanhoEntregador(precoTotal);
+
   const handleConcluirEntrega = async () => {
-    const entregadorId = pedido.entregador_id || 1; // ajuste conforme sua lógica
-    await EntregadorService.entregarPedido(entregadorId, pedido.pedido_id);
-    if (onConcluirEntrega) onConcluirEntrega();
+    // ✅ Usar entregadorId recebido como prop
+    const idEntregador = entregadorId || pedido.entregador_id;
+    
+    if (idEntregador) {
+      console.log(`🔄 Entregador ${idEntregador} concluindo entrega do pedido ${pedido.pedido_id}...`);
+      
+      try {
+        // ✅ Usar o novo método que atualiza ambos os saldos
+        const resultado = await EntregadorService.processarEntregaCompleta(
+          idEntregador, 
+          pedido.pedido_id, 
+          precoTotal,
+          pedido.restaurante_id // Passar o ID do restaurante
+        );
+        
+        if (resultado) {
+          console.log('✅ Entrega concluída com sucesso');
+          console.log(`💰 Ganho do entregador: R$ ${resultado.ganhoEntregador.toFixed(2)}`);
+          console.log(`💰 Ganho do restaurante: R$ ${resultado.ganhoRestaurante.toFixed(2)}`);
+          
+          if (onConcluirEntrega) onConcluirEntrega();
+        }
+      } catch (error) {
+        console.error('❌ Erro ao concluir entrega:', error);
+      }
+    } else {
+      console.error('❌ ID do entregador não encontrado');
+    }
   };
 
   return (
@@ -50,9 +85,10 @@ const EntregaInfoModal = ({
         <Text style={styles.modalInfoItem}>Nenhum produto listado</Text>
       )}
       <View style={styles.divisor} />
+      <Text style={styles.modalInfoBold}>Valor total do pedido: R$ {precoTotal.toFixed(2)}</Text>
       <View style={styles.ganhoRow}>
-        <Text style={styles.modalInfoBold}>Ganho da entrega</Text>
-        <Text style={styles.modalInfoBold}>R$ {parseFloat(pedido.preco_total).toFixed(2)}</Text>
+        <Text style={styles.modalInfoBold}>Ganho da entrega (5%)</Text>
+        <Text style={styles.modalInfoBold}>R$ {ganhoEntregador.toFixed(2)}</Text>
       </View>
       <TouchableOpacity
         style={styles.concluirBtn}

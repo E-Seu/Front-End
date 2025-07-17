@@ -3,16 +3,17 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-na
 import { useAuth } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import ClienteService from '../../services/ClienteService';
+import BalanceModal from '../../components/BalanceModal';
 import SuporteIcon from '../../assets/icons/suporteIcon';
 import SairIcon from '../../assets/icons/sairIcon';
 import { Linking } from 'react-native';
-
 
 const ClienteConta = () => {
   const { user, logout } = useAuth();
   const navigation = useNavigation();
   const [saldo, setSaldo] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [balanceModalVisible, setBalanceModalVisible] = useState(false);
 
   const profileImage = require('../../assets/images/imagemPerfil.png'); 
 
@@ -64,17 +65,42 @@ const ClienteConta = () => {
   };
 
   const handleRecarregarCarteira = () => {
-    // Funcionalidade será implementada futuramente
-    console.log('Recarregar carteira');
+    setBalanceModalVisible(true);
   };
 
-const handleSuporte = () => {
-  const email = 'gabryella.rodrigues@aluno.uece.br'; // coloque o email desejado
-  const assunto = 'Suporte - App';
-  const corpo = 'Olá, preciso de ajuda com...';
-  const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
-  Linking.openURL(mailtoUrl);
-};
+  const handleReloadBalance = async (valor) => {
+    try {
+      if (user?.usuario_id) {
+        const novoSaldo = saldo + valor;
+        
+        // Atualizar saldo no backend
+        const response = await ClienteService.atualizarSaldo(user.usuario_id, novoSaldo);
+        
+        if (response) {
+          // Recarregar dados da tela
+          await carregarDadosCliente();
+          
+          Alert.alert(
+            'Sucesso!', 
+            `Carteira recarregada com ${formatarSaldo(valor)}. Novo saldo: ${formatarSaldo(novoSaldo)}`
+          );
+        } else {
+          throw new Error('Erro ao atualizar saldo');
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao recarregar carteira:', error);
+      throw error; // Re-throw para que o BalanceModal possa tratar
+    }
+  };
+
+  const handleSuporte = () => {
+    const email = 'gabryella.rodrigues@aluno.uece.br';
+    const assunto = 'Suporte - App';
+    const corpo = 'Olá, preciso de ajuda com...';
+    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    Linking.openURL(mailtoUrl);
+  };
 
   const formatarSaldo = (valor) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -134,10 +160,19 @@ const handleSuporte = () => {
           <Text style={styles.menuItemText}>Sair</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Balance Modal */}
+      <BalanceModal
+        visible={balanceModalVisible}
+        onClose={() => setBalanceModalVisible(false)}
+        onReload={handleReloadBalance}
+        currentBalance={saldo}
+      />
     </View>
   );
 };
 
+// ...existing code...
 const styles = StyleSheet.create({
   container: {
     flex: 1,

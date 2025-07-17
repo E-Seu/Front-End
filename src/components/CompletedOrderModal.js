@@ -16,44 +16,11 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const CompletedOrderModal = ({ 
   visible, 
   onClose, 
-  onGoToOrders, 
   pedidoId, 
   restaurantName, 
-  total,
-  navigateToScreen // ✅ Usar navigateToScreen em vez de navigation
+  total
 }) => {
   
-  const handleGoToOrders = () => {
-    console.log('🔄 CompletedOrderModal - Botão "Ver Meus Pedidos" clicado');
-    console.log('🔄 onGoToOrders existe?', typeof onGoToOrders === 'function');
-    console.log('🔄 navigateToScreen existe?', typeof navigateToScreen === 'function');
-    
-    // Fechar o modal primeiro
-    if (typeof onClose === 'function') {
-      onClose();
-    }
-    
-    // Tentar usar a função onGoToOrders primeiro (se fornecida)
-    if (typeof onGoToOrders === 'function') {
-      console.log('🔄 Chamando onGoToOrders...');
-      onGoToOrders();
-    } 
-    // Fallback: usar navigateToScreen do AppLayout
-    else if (typeof navigateToScreen === 'function') {
-      console.log('🔄 Usando navigateToScreen do AppLayout...');
-      navigateToScreen('ClientePedidos');
-    }
-    // Último recurso: log de erro
-    else {
-      console.error('❌ Nem onGoToOrders nem navigateToScreen estão disponíveis');
-      console.error('❌ Props recebidas:', { 
-        onGoToOrders: typeof onGoToOrders,
-        navigateToScreen: typeof navigateToScreen,
-        pedidoId
-      });
-    }
-  };
-
   const handleClose = () => {
     console.log('🔄 CompletedOrderModal - Fechando modal');
     if (typeof onClose === 'function') {
@@ -108,7 +75,7 @@ const CompletedOrderModal = ({
                   )}
                   {total && (
                     <Text style={styles.totalText}>
-                      Total: R$ {total.toFixed(2)}
+                      Total: R$ {typeof total === 'number' ? total.toFixed(2) : total}
                     </Text>
                   )}
                 </View>
@@ -118,11 +85,11 @@ const CompletedOrderModal = ({
             {/* Botão fixo na parte inferior */}
             <View style={styles.fixedBottomContainer}>
               <TouchableOpacity 
-                style={styles.goToOrdersButton} 
-                onPress={handleGoToOrders}
+                style={styles.tudoCertoButton} 
+                onPress={handleClose}
                 activeOpacity={0.8}
               >
-                <Text style={styles.goToOrdersButtonText}>Ver Meus Pedidos</Text>
+                <Text style={styles.tudoCertoButtonText}>Tudo Certo</Text>
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
@@ -239,7 +206,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
   },
   
-  goToOrdersButton: {
+  tudoCertoButton: {
     width: '100%',
     height: 48,
     backgroundColor: '#8B0BD5',
@@ -248,7 +215,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   
-  goToOrdersButtonText: {
+  tudoCertoButtonText: {
     fontSize: 16,
     fontFamily: 'Nunito-ExtraBold',
     color: '#FFFFFF',

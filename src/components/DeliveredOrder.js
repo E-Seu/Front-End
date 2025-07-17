@@ -1,122 +1,55 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, ActivityIndicator } from 'react-native';
-import EntregadorService from '../services/EntregadorService';
-import RelogioIcon from '../assets/icons/relogioIcon';
-import ViewedOrderModal from './ViewedOrderModal';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 
-const DeliveredOrder = ({ entregadorId, pedidosEntreguesIds = [] }) => {
-  const [pedidosDetalhados, setPedidosDetalhados] = useState([]);
-  const [selectedPedido, setSelectedPedido] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchDetalhes = async () => {
-      setLoading(true);
-      const detalhes = await Promise.all(
-        pedidosEntreguesIds.map(async (pedidoId) => {
-          const detalhe = await EntregadorService.visualizarPedidoEntregue(entregadorId, pedidoId);
-          return detalhe;
-        })
-      );
-      setPedidosDetalhados(detalhes.filter(Boolean));
-      setLoading(false);
-    };
-    if (entregadorId && pedidosEntreguesIds.length > 0) {
-      fetchDetalhes();
-    } else {
-      setPedidosDetalhados([]);
-      setLoading(false);
+const DeliveredOrder = ({ 
+  dia = "dia exemplo",
+  horario = "horario exemplo",
+  nomeRestaurante = "Restaurante Exemplo",
+  primeiroItem = "item exemplo",
+  pedidoOriginal,
+  onMaisInformacoesPress
+}) => {
+  const [showModal, setShowModal] = useState(false);
+  
+  const handleMaisInformacoesPress = () => {
+    console.log('🔄 Mais Informações pressionado para pedido:', pedidoOriginal?.pedido_id);
+    
+    if (onMaisInformacoesPress) {
+      onMaisInformacoesPress(pedidoOriginal);
     }
-  }, [entregadorId, pedidosEntreguesIds]);
-
-  const handleVisualizar = (pedido) => {
-    setSelectedPedido(pedido);
-    setModalVisible(true);
   };
 
-  const handleCloseModal = () => {
-    setModalVisible(false);
-    setSelectedPedido(null);
-  };
-
-  const renderPedido = ({ item }) => (
+  return (
     <View style={styles.container}>
       <View style={styles.content}>
+        {/* Lado esquerdo - Informações do pedido */}
         <View style={styles.infoContainer}>
           <View style={styles.horarioContainer}>
-            <Text style={styles.pedidoFeitoText}>Entregue às </Text>
-            <Text style={styles.horarioText}>{item.horario_entrega || item.horario || '---'}</Text>
+            <Text style={styles.pedidoFeitoText}>Entrega feita em {dia} às {horario}</Text>
           </View>
-          <Text style={styles.nomeRestaurante}>{item.restaurante_nome || 'Restaurante'}</Text>
+          
+          <Text style={styles.nomeRestaurante}>{nomeRestaurante}</Text>
+          
+          <View style={styles.statusContainer}>
+            <Text style={styles.statusText}>Pedido entregue</Text>
+            <Image 
+              source={require('../assets/pedidoConcluído.png')}
+              style={styles.statusIcon}
+            />
+          </View>
+          
           <Text style={styles.primeiroItem} numberOfLines={1}>
-            {item.pedido_produtos?.[0]?.produto?.nome || 'item'}...
+            {primeiroItem}...
           </Text>
-        </View>
-        <View style={styles.rightContainer}>
-          <View style={styles.statusRelogioContainer}>
-            <Text style={styles.statusText}>Entregue</Text>
-            <RelogioIcon width={25} height={25} style={{ marginLeft: 4 }} />
-          </View>
-          <TouchableOpacity
-            style={styles.visualizarButton}
-            onPress={() => handleVisualizar(item)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.visualizarText}>Visualizar Pedido</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </View>
-  );
-
-  if (loading) {
-    return (
-      <View style={{ marginTop: 32 }}>
-        <ActivityIndicator size="large" color="#8B0BD5" />
-      </View>
-    );
-  }
-
-  return (
-    <>
-      <FlatList
-        data={pedidosDetalhados}
-        keyExtractor={(item) => String(item.pedido_id)}
-        renderItem={renderPedido}
-        ListEmptyComponent={
-          <Text style={{ textAlign: 'center', marginTop: 24, color: '#888' }}>
-            Nenhum pedido entregue encontrado.
-          </Text>
-        }
-        contentContainerStyle={{ paddingBottom: 40 }}
-      />
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={handleCloseModal}
-      >
-        {selectedPedido && (
-          <ViewedOrderModal
-            onClose={handleCloseModal}
-            pedidoId={selectedPedido.pedido_id}
-            nomeRestaurante={selectedPedido.restaurante_nome}
-            localizacao={selectedPedido.localizacao || selectedPedido.endereco || selectedPedido.local || 'Não informado'}
-            precoTotal={selectedPedido.preco_total || 0}
-            status={selectedPedido.status}
-            nomeEntregador={selectedPedido.entregador_nome || ''}
-            itens={selectedPedido.pedido_produtos || []}
-          />
-        )}
-      </Modal>
-    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#F7F7F7',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 0.5,
     borderColor: '#888888',
@@ -136,7 +69,7 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    minHeight: 80,
+    minHeight: 110,
   },
 
   infoContainer: {
@@ -146,33 +79,39 @@ const styles = StyleSheet.create({
   },
 
   horarioContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginBottom: 8,
   },
 
   pedidoFeitoText: {
     fontSize: 16,
-    fontFamily: 'Nunito-Regular',
+    fontFamily: 'Nunito-SemiBold',
     color: '#888888',
   },
 
-  horarioText: {
+  nomeRestaurante: {
     fontSize: 16,
-    fontFamily: 'Nunito-Bold',
+    fontFamily: 'Nunito-Regular',
     color: '#222222',
+    marginBottom: 8,
+  },
+
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
   },
 
   statusText: {
-    fontSize: 16,
-    fontFamily: 'Nunito-Bold',
-    color: '#4E0777',
+    fontSize: 14,
+    fontFamily: 'Nunito-Regular',
+    color: '#888888',
     marginRight: 8,
   },
 
-  nomeRestaurante: {
-    fontSize: 14,
-    fontFamily: 'Nunito-Regular',
-    color: '#222222',
+  statusIcon: {
+    width: 16,
+    height: 16,
+    resizeMode: 'contain',
   },
 
   primeiroItem: {
@@ -183,26 +122,20 @@ const styles = StyleSheet.create({
   },
 
   rightContainer: {
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'flex-end',
-    minHeight: 80,
+    minHeight: 110,
   },
 
-  visualizarButton: {
+  maisInformacoesButton: {
     alignSelf: 'flex-end',
     paddingVertical: 4,
   },
 
-  visualizarText: {
+  maisInformacoesText: {
     fontSize: 14,
-    fontFamily: 'Nunito-Bold',
+    fontFamily: 'Nunito-SemiBold',
     color: '#4E0777',
-  },
-
-  statusRelogioContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
   },
 });
 

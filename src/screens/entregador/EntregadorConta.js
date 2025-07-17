@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-na
 import { useAuth } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import EntregadorService from '../../services/EntregadorService';
+import LoginService from '../../services/LoginService';
+import WithdrawModal from '../../components/WithdrawModal';
 import SuporteIcon from '../../assets/icons/suporteIcon';
 import SairIcon from '../../assets/icons/sairIcon';
 import { Linking } from 'react-native';
@@ -12,20 +14,57 @@ const EntregadorConta = () => {
   const navigation = useNavigation();
   const [dadosEntregador, setDadosEntregador] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [saldo, setSaldo] = useState(0);
+  const [usuarioId, setUsuarioId] = useState(null);
+  const [withdrawModalVisible, setWithdrawModalVisible] = useState(false);
 
   const profileImage = require('../../assets/images/imagemPerfil.png'); 
 
   useEffect(() => {
-    carregarDadosEntregador();
-    carregarSaldoEntregador();
+    loadUserData();
   }, []);
+
+  useEffect(() => {
+    if (usuarioId) {
+      carregarDadosEntregador();
+      carregarSaldoEntregador();
+    }
+  }, [usuarioId]);
+
+  const loadUserData = async () => {
+    try {
+      // Primeiro tentar do contexto de autenticação
+      let userId = user?.id || user?.usuario_id;
+      
+      // Se não tiver, tentar do LoginService
+      if (!userId) {
+        const currentUser = await LoginService.getCurrentUser();
+        if (currentUser.success) {
+          userId = currentUser.user.id || currentUser.user.usuario_id;
+        }
+      }
+      
+      if (userId) {
+        setUsuarioId(userId);
+        console.log('✅ Usuario ID definido na Conta:', userId);
+      } else {
+        console.error('❌ Não foi possível obter ID do usuário');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados do usuário:', error);
+    }
+  };
 
   const carregarDadosEntregador = async () => {
     try {
       setLoading(true);
-      if (user?.entregador_id) { // <-- usa entregador_id
-        const dados = await EntregadorService.getEntregador(user.entregador_id);
-        if (dados) setDadosEntregador(dados);
+      if (usuarioId) {
+        // ✅ Usar usuario_id para buscar dados
+        const dados = await EntregadorService.getEntregadorByUsuarioId(usuarioId);
+        if (dados) {
+          setDadosEntregador(dados);
+          console.log('✅ Dados do entregador carregados:', dados);
+        }
       }
     } catch (error) {
       console.error('❌ Erro ao carregar dados do entregador:', error);
@@ -34,13 +73,15 @@ const EntregadorConta = () => {
     }
   };
 
-  const [saldo, setSaldo] = useState(0);
-
   const carregarSaldoEntregador = async () => {
     try {
-      if (user?.entregador_id) { // <-- usa entregador_id
-        const saldoData = await EntregadorService.visualizarSaldoEntregador(user.entregador_id);
-        setSaldo(saldoData?.saldo || 0);
+      if (usuarioId) {
+        // ✅ Usar usuario_id para buscar saldo
+        const saldoData = await EntregadorService.visualizarSaldoEntregador(usuarioId);
+        if (saldoData) {
+          setSaldo(saldoData.saldo || 0);
+          console.log('✅ Saldo carregado:', saldoData.saldo);
+        }
       }
     } catch (error) {
       console.error('❌ Erro ao carregar saldo do entregador:', error);
@@ -74,8 +115,29 @@ const EntregadorConta = () => {
   };
 
   const handleRetirarDinheiro = () => {
-    // Funcionalidade será implementada futuramente
-    console.log('Retirar dinheiro');
+    setWithdrawModalVisible(true);
+  };
+
+  const handleConfirmWithdraw = async () => {
+    try {
+      if (usuarioId) {
+        // ✅ Zerar saldo do entregador
+        await EntregadorService.atualizarSaldoEntregador(usuarioId, 0);
+        setSaldo(0);
+        
+        Alert.alert(
+          'Retirada Confirmada',
+          'Sua solicitação de retirada foi processada com sucesso! O valor será transferido para sua conta em até 2 dias úteis.',
+          [{ text: 'OK' }]
+        );
+        
+        console.log('✅ Retirada de dinheiro processada');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao processar retirada:', error);
+      Alert.alert('Erro', 'Erro ao processar retirada. Tente novamente.');
+      throw error;
+    }
   };
 
   const handleSuporte = () => {
@@ -162,6 +224,12 @@ const EntregadorConta = () => {
           <Text style={styles.menuItemText}>Sair</Text>
         </TouchableOpacity>
       </View>
+      <WithdrawModal
+          visible={withdrawModalVisible}
+          onClose={() => setWithdrawModalVisible(false)}
+          onConfirm={handleConfirmWithdraw}
+          currentBalance={saldo}
+        />
     </View>
   );
 };
